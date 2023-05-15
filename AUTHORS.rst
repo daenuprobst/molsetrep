@@ -2,4 +2,5 @@
 Contributors
 ============
 
-* Daniel Probst <daenuprobst@gmail.com>
+* Daniel Probst <daniel.probst@epfl.ch>
+* Maria Boulougouri <maria.boulougouri@epfl.ch>

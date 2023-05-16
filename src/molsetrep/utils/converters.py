@@ -6,7 +6,10 @@ import torch_geometric
 import networkx as nx
 
 from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 from rdkit.Chem.rdchem import Mol, Atom, Bond
+from rdkit.Chem.AllChem import MolFromSmiles
+from rdkit import RDLogger
 
 
 def __get_atom_props(atom: Atom) -> Dict[str, Any]:
@@ -45,29 +48,9 @@ def mol_to_nx(mol: Mol) -> nx.Graph:
     return G
 
 
-# def mols_to_nx(mols: Iterable[Mol]):
-#     G = nx.Graph()
-
-#     atom_idx = 0
-#     graph_to_mol = defaultdict(list)
-#     node_idx_to_mol = {}
-#     for mol_idx, mol in enumerate(mols):
-#         atom_idx_map = {}
-#         for atom in mol.GetAtoms():
-#             G.add_node(atom_idx, **__get_atom_props(atom))
-#             atom_idx_map[atom.GetIdx()] = atom_idx
-#             node_idx_to_mol[atom_idx] = mol_idx
-#             atom_idx += 1
-#             graph_to_mol[mol_idx].append(atom_idx)
-
-#         for bond in mol.GetBonds():
-#             G.add_edge(
-#                 atom_idx_map[bond.GetBeginAtomIdx()],
-#                 atom_idx_map[bond.GetEndAtomIdx()],
-#                 **__get_bond_props(bond),
-#             )
-
-#     return G, graph_to_mol, node_idx_to_mol
+def smiles_to_nx(smiles: str) -> nx.Graph:
+    mol = MolFromSmiles(smiles)
+    return mol_to_nx(mol)
 
 
 def nx_to_pyg(
@@ -194,3 +177,83 @@ def nx_to_pyg(
         data.y = y
 
     return data
+
+
+def molnet_to_pyg(
+    train,
+    valid,
+    test,
+    task: int = 0,
+    batch_size: int = 64,
+    atom_attrs: Optional[Iterable[str]] = None,
+    bond_attrs: Optional[Iterable[str]] = None,
+    suppress_rdkit_warnings: bool = True,
+    label_type: torch.dtype = None,
+):
+    if suppress_rdkit_warnings:
+        RDLogger.DisableLog("rdApp.*")
+
+    if atom_attrs is None:
+        atom_attrs = [
+            "atomic_num",
+            "charge",
+            "aromatic",
+            "is_in_ring",
+            "hydrogen_count",
+            "hybridization",
+            "chiral_tag",
+            "degree",
+            "radical_count",
+        ]
+
+    if bond_attrs is None:
+        bond_attrs = [
+            "bond_type",
+            "bond_conjugated",
+            "bond_stereo",
+        ]
+
+    train_data_list = []
+    for i, G in enumerate([smiles_to_nx(s) for s in train.ids]):
+        train_data_list.append(
+            nx_to_pyg(
+                G,
+                group_node_attrs=atom_attrs,
+                group_edge_attrs=bond_attrs,
+                y=torch.tensor([train.y[i][task]], dtype=label_type),
+            )
+        )
+
+    valid_data_list = []
+    for i, G in enumerate([smiles_to_nx(s) for s in valid.ids]):
+        valid_data_list.append(
+            nx_to_pyg(
+                G,
+                group_node_attrs=atom_attrs,
+                group_edge_attrs=bond_attrs,
+                y=torch.tensor([valid.y[i][task]], dtype=label_type),
+            )
+        )
+
+    test_data_list = []
+    for i, G in enumerate([smiles_to_nx(s) for s in test.ids]):
+        test_data_list.append(
+            nx_to_pyg(
+                G,
+                group_node_attrs=atom_attrs,
+                group_edge_attrs=bond_attrs,
+                y=torch.tensor([test.y[i][task]], dtype=label_type),
+            )
+        )
+
+    train_loader = DataLoader(
+        train_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+    )
+    valid_loader = DataLoader(
+        valid_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+    )
+    test_loader = DataLoader(
+        test_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+    )
+
+    return train_loader, valid_loader, test_loader

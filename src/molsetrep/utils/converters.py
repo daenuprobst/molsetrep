@@ -6,7 +6,7 @@ import torch_geometric
 import networkx as nx
 
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader, ImbalancedSampler
 from rdkit.Chem.rdchem import Mol, Atom, Bond
 from rdkit.Chem.AllChem import MolFromSmiles
 from rdkit import RDLogger
@@ -189,6 +189,7 @@ def molnet_to_pyg(
     bond_attrs: Optional[Iterable[str]] = None,
     suppress_rdkit_warnings: bool = True,
     label_type: torch.dtype = None,
+    imbalanced_sampler: bool = False,
 ):
     if suppress_rdkit_warnings:
         RDLogger.DisableLog("rdApp.*")
@@ -246,8 +247,18 @@ def molnet_to_pyg(
             )
         )
 
+    sampler = None
+    shuffle = True
+    if imbalanced_sampler:
+        sampler = ImbalancedSampler(train_data_list)
+        shuffle = False
+
     train_loader = DataLoader(
-        train_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+        train_data_list,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=True,
+        sampler=sampler,
     )
     valid_loader = DataLoader(
         valid_data_list, batch_size=batch_size, shuffle=True, drop_last=True

@@ -9,7 +9,7 @@ from torcheval.metrics.metric import Metric
 from molsetrep.utils.loss_meter import LossMeter
 
 
-class Trainer:
+class TorchTrainer:
     def __init__(
         self,
         model: torch.nn.Module,
@@ -52,34 +52,35 @@ class Trainer:
         if not self.monitor_lower_is_better:
             self.best_value = -self.best_value
 
-    def train_step(self, batch):
+    def train_step(self, X, y):
         self.model.train()
         self.optimizer.zero_grad()
-        output = self.model(batch)
-        loss = self.criterion(output, batch.y)
+        output = self.model(X)
+        loss = self.criterion(output, y)
         loss.backward()
         self.optimizer.step()
         return output, loss
 
-    def valid_step(self, batch):
+    def valid_step(self, X, y):
         self.model.eval()
-        output = self.model(batch)
-        loss = self.criterion(output, batch.y)
+        output = self.model(X)
+        loss = self.criterion(output, y)
         return output, loss
 
-    def test_step(self, batch):
+    def test_step(self, X, y):
         self.model.eval()
-        output = self.model(batch)
-        loss = self.criterion(output, batch.y)
+        output = self.model(X)
+        loss = self.criterion(output, y)
         return output, loss
 
     def train(
         self, train_loader: DataLoader, valid_loader: Optional[DataLoader] = None
     ) -> None:
         for epoch in range(self.n_epochs):
-            for batch in train_loader:
-                batch.to(self.device)
-                output, loss = self.train_step(batch)
+            for X, y in train_loader:
+                X = X.to(self.device)
+                y = y.to(self.device)
+                output, loss = self.train_step(X, y)
                 self.train_loss.update(loss)
 
                 y_pred = output
@@ -87,14 +88,15 @@ class Trainer:
                 if output.size(dim=-1) == 2:
                     y_pred = output.max(1)[1]
                 for metric in self.train_metrics:
-                    metric.update(y_pred.cpu(), batch.y.cpu())
+                    metric.update(y_pred.cpu(), y.cpu())
 
             if self.scheduler is not None:
                 self.scheduler.step()
 
-            for batch in valid_loader:
-                batch.to(self.device)
-                output, loss = self.valid_step(batch)
+            for X, y in valid_loader:
+                X = X.to(self.device)
+                y = y.to(self.device)
+                output, loss = self.valid_step(X, y)
                 self.valid_loss.update(loss)
 
                 y_pred = output
@@ -102,7 +104,7 @@ class Trainer:
                 if output.size(dim=-1) == 2:
                     y_pred = output.max(1)[1]
                 for metric in self.valid_metrics:
-                    metric.update(y_pred.cpu(), batch.y.cpu())
+                    metric.update(y_pred.cpu(), y.cpu())
 
             best_epoch = False
             monitored_metric = self.valid_loss
@@ -155,9 +157,10 @@ class Trainer:
 
     def test(self, test_loader: DataLoader) -> None:
         self.model.load_state_dict(self.best_model)
-        for batch in test_loader:
-            batch.to(self.device)
-            output, loss = self.test_step(batch)
+        for X, y in test_loader:
+            X = X.to(self.device)
+            y = y.to(self.device)
+            output, loss = self.test_step(X, y)
             self.test_loss.update(loss)
 
             y_pred = output
@@ -165,7 +168,7 @@ class Trainer:
             if output.size(dim=-1) == 2:
                 y_pred = output.max(1)[1]
             for metric in self.test_metrics:
-                metric.update(y_pred.cpu(), batch.y.cpu())
+                metric.update(y_pred.cpu(), y.cpu())
 
         print("------------------------------------------------")
         print(f"Using Epoch {self.best_epoch + 1} for testing...")

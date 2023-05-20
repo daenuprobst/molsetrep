@@ -1,1 +1,2 @@
 from molsetrep.encoders.secmqnfp_encoder import SECMQNFPEncoder
+from molsetrep.encoders.secfp_encoder import SECFPEncoder

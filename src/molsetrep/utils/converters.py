@@ -8,8 +8,10 @@ import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, ImbalancedSampler
 from rdkit.Chem.rdchem import Mol, Atom, Bond
-from rdkit.Chem.AllChem import MolFromSmiles
+from rdkit.Chem.AllChem import MolFromSmiles, GetSymmSSSR
 from rdkit import RDLogger
+
+from mhfp.encoder import MHFPEncoder
 
 
 def __get_atom_props(atom: Atom) -> Dict[str, Any]:
@@ -28,7 +30,7 @@ def __get_atom_props(atom: Atom) -> Dict[str, Any]:
 
 def __get_bond_props(bond: Bond) -> Dict[str, Any]:
     return {
-        "bond_type": bond.GetBondTypeAsDouble(),
+        "bond_type": int(bond.GetBondType()),
         "bond_conjugated": int(bond.GetIsConjugated()),
         "bond_stereo": int(bond.GetStereo()),
     }
@@ -48,9 +50,54 @@ def mol_to_nx(mol: Mol) -> nx.Graph:
     return G
 
 
-def smiles_to_nx(smiles: str) -> nx.Graph:
+def mols_to_nx(mols: Iterable[Mol]) -> nx.Graph:
+    G = nx.Graph()
+
+    node_idx = 0
+    atom_to_node_map = {}
+    for mol in mols:
+        for atom in mol.GetAtoms():
+            atom_to_node_map[atom.GetIdx()] = node_idx
+            G.add_node(node_idx, **__get_atom_props(atom))
+            node_idx += 1
+
+        for bond in mol.GetBonds():
+            G.add_edge(
+                atom_to_node_map[bond.GetBeginAtomIdx()],
+                atom_to_node_map[bond.GetEndAtomIdx()],
+                **__get_bond_props(bond),
+            )
+
+    return G
+
+
+def smiles_to_nx(
+    smiles: str,
+) -> nx.Graph:
     mol = MolFromSmiles(smiles)
     return mol_to_nx(mol)
+
+
+def smiles_to_secfp_nx(
+    smiles: str,
+    radius: int = 3,
+    rings: bool = True,
+    kekulize: bool = True,
+    min_radius: int = 1,
+):
+    substructs = MHFPEncoder.shingling_from_mol(
+        MolFromSmiles(smiles), radius, rings, kekulize, min_radius
+    )
+
+    mols = []
+
+    for s in substructs:
+        mol = MolFromSmiles(s, sanitize=False)
+        mol.UpdatePropertyCache(strict=False)
+        GetSymmSSSR(mol)
+        mols.append(mol)
+
+    return mols_to_nx(mols)
 
 
 def nx_to_pyg(
@@ -58,6 +105,7 @@ def nx_to_pyg(
     group_node_attrs: Optional[Union[List[str], all]] = None,
     group_edge_attrs: Optional[Union[List[str], all]] = None,
     y: Optional[Any] = None,
+    idx: Optional[int] = None,
 ) -> torch_geometric.data.Data:
     r"""Adapted from torch.utils.from_networkx.
     Converts a :obj:`networkx.Graph` or :obj:`networkx.DiGraph` to a
@@ -176,6 +224,9 @@ def nx_to_pyg(
     if y is not None:
         data.y = y
 
+    if idx is not None:
+        data.idx = idx
+
     return data
 
 
@@ -190,6 +241,8 @@ def molnet_to_pyg(
     suppress_rdkit_warnings: bool = True,
     label_type: torch.dtype = None,
     imbalanced_sampler: bool = False,
+    secfp: bool = False,
+    index_graphs: bool = False,
 ):
     if suppress_rdkit_warnings:
         RDLogger.DisableLog("rdApp.*")
@@ -214,36 +267,43 @@ def molnet_to_pyg(
             "bond_stereo",
         ]
 
+    smiles_to_nx_converter = smiles_to_nx
+    if secfp:
+        smiles_to_nx_converter = smiles_to_secfp_nx
+
     train_data_list = []
-    for i, G in enumerate([smiles_to_nx(s) for s in train.ids]):
+    for i, G in enumerate([smiles_to_nx_converter(s) for s in train.ids]):
         train_data_list.append(
             nx_to_pyg(
                 G,
                 group_node_attrs=atom_attrs,
                 group_edge_attrs=bond_attrs,
                 y=torch.tensor([train.y[i][task]], dtype=label_type),
+                idx=len(train_data_list) if index_graphs else None,
             )
         )
 
     valid_data_list = []
-    for i, G in enumerate([smiles_to_nx(s) for s in valid.ids]):
+    for i, G in enumerate([smiles_to_nx_converter(s) for s in valid.ids]):
         valid_data_list.append(
             nx_to_pyg(
                 G,
                 group_node_attrs=atom_attrs,
                 group_edge_attrs=bond_attrs,
                 y=torch.tensor([valid.y[i][task]], dtype=label_type),
+                idx=len(valid_data_list) if index_graphs else None,
             )
         )
 
     test_data_list = []
-    for i, G in enumerate([smiles_to_nx(s) for s in test.ids]):
+    for i, G in enumerate([smiles_to_nx_converter(s) for s in test.ids]):
         test_data_list.append(
             nx_to_pyg(
                 G,
                 group_node_attrs=atom_attrs,
                 group_edge_attrs=bond_attrs,
                 y=torch.tensor([test.y[i][task]], dtype=label_type),
+                idx=len(test_data_list) if index_graphs else None,
             )
         )
 
@@ -259,12 +319,21 @@ def molnet_to_pyg(
         shuffle=shuffle,
         drop_last=True,
         sampler=sampler,
+        follow_batch=["idx"] if index_graphs else None,
     )
     valid_loader = DataLoader(
-        valid_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+        valid_data_list,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        follow_batch=["idx"] if index_graphs else None,
     )
     test_loader = DataLoader(
-        test_data_list, batch_size=batch_size, shuffle=True, drop_last=True
+        test_data_list,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        follow_batch=["idx"] if index_graphs else None,
     )
 
     return train_loader, valid_loader, test_loader

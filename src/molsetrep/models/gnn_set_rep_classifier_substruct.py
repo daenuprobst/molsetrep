@@ -9,7 +9,7 @@ from torch_geometric.data import Batch
 from molsetrep.models.gine import GINE
 
 
-class GNNSetRepClassifier(torch.nn.Module):
+class GNNSetRepClassifierSubstruct(torch.nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -21,7 +21,7 @@ class GNNSetRepClassifier(torch.nn.Module):
         n_classes: int = 2,
         gnn: Optional[torch.nn.Module] = None,
     ):
-        super(GNNSetRepClassifier, self).__init__()
+        super(GNNSetRepClassifierSubstruct, self).__init__()
 
         self.d = hidden_channels
         self.in_edge_channels = in_edge_channels
@@ -34,7 +34,7 @@ class GNNSetRepClassifier(torch.nn.Module):
                     hidden_channels,
                     num_layers,
                     edge_dim=in_edge_channels,
-                    jk="lstm",
+                    jk="cat",
                 )
             else:
                 self.gnn = GIN(in_channels, hidden_channels, num_layers)
@@ -62,6 +62,43 @@ class GNNSetRepClassifier(torch.nn.Module):
             out = self.gnn(batch.x.float(), batch.edge_index)
 
         out_unbatched = unbatch(out, batch.batch)
+
+        cc_lengths = []
+        for data in batch.to_data_list():
+            G = to_networkx(data)
+            cc_lengths.append(
+                [len(cc) for cc in nx.connected_components(G.to_undirected())]
+            )
+
+        ub_lengths = []
+        for ub in out_unbatched:
+            ub_lengths.append(len(ub))
+
+        # print(cc_lengths)
+        # print(ub_lengths)
+
+        fps = []
+        for ub, ccs in zip(out_unbatched, cc_lengths):
+            fp = []
+            offset = 0
+            for cc in ccs:
+                fp.append(ub[offset:cc])
+                offset += cc
+
+            max_cardinality = max([b.shape[0] for b in fp])
+            fp_to = torch.zeros(
+                (len(fp), max_cardinality, self.d), device=batch.x.device
+            )
+            for i, b in enumerate(fp):
+                fp_to[i, : b.shape[0], :] = b
+
+            fps.append(torch.mean(fp_to, dim=-2))
+
+        # for fp in fps:
+        #     print(fp.shape)
+        # print("-------------------------------")
+
+        out_unbatched = fps
 
         batch_size = len(out_unbatched)
         max_cardinality = max([b.shape[0] for b in out_unbatched])

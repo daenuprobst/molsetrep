@@ -7,6 +7,7 @@ from torch_geometric.data import DataLoader
 from torcheval.metrics.metric import Metric
 
 from molsetrep.utils.loss_meter import LossMeter
+from molsetrep.explain.explainer import Explainer
 
 
 class Trainer:
@@ -22,6 +23,7 @@ class Trainer:
         scheduler: Optional[LRScheduler] = None,
         monitor_metric: Optional[int] = None,
         monitor_lower_is_better: bool = True,
+        explainer: Optional[Explainer] = None,
         device: Optional[torch.device] = None,
     ) -> None:
         self.model = model
@@ -34,6 +36,7 @@ class Trainer:
         self.scheduler = scheduler
         self.monitor_metric = monitor_metric
         self.monitor_lower_is_better = monitor_lower_is_better
+        self.explainer = explainer
 
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -136,14 +139,17 @@ class Trainer:
                     f"{type(metric).__name__}: {round(metric.compute().item(), 3)}"
                 )
 
-            print(
-                best_epoch_prefix,
-                f"Epoch {epoch + 1}:",
-                f"Train loss: {round(self.train_loss.compute(), 3)}",
-                "(" + ", ".join(train_metrics) + ")",
-                f" Valid loss: {round(self.valid_loss.compute(), 3)}",
-                "(" + ", ".join(valid_metrics) + ")",
-            )
+            if self.explainer:
+                self.explainer.update()
+            else:
+                print(
+                    best_epoch_prefix,
+                    f"Epoch {epoch + 1}:",
+                    f"Train loss: {round(self.train_loss.compute(), 3)}",
+                    "(" + ", ".join(train_metrics) + ")",
+                    f" Valid loss: {round(self.valid_loss.compute(), 3)}",
+                    "(" + ", ".join(valid_metrics) + ")",
+                )
 
             self.train_loss.reset()
             self.valid_loss.reset()

@@ -1,6 +1,6 @@
 from typing import Optional
 import torch
-from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear
+from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear, Dropout
 from torch.nn.functional import log_softmax
 from torch_geometric.nn import GIN
 from torch_geometric.utils import unbatch
@@ -16,6 +16,7 @@ class GNNSetRepRegressor(torch.nn.Module):
         in_edge_channels,
         n_hidden_sets,
         n_elements,
+        dropout: float = 0.0,
         gnn: Optional[torch.nn.Module] = None,
     ):
         super(GNNSetRepRegressor, self).__init__()
@@ -40,6 +41,7 @@ class GNNSetRepRegressor(torch.nn.Module):
         self.n_elements = n_elements
 
         self.Wc = Parameter(torch.FloatTensor(self.d, n_hidden_sets * n_elements))
+        self.dropout = Dropout(dropout)
         self.fc1 = Linear(n_hidden_sets, 32)
         self.bn = BatchNorm1d(32, affine=True, track_running_stats=False)
         self.relu = LeakyReLU()
@@ -50,7 +52,7 @@ class GNNSetRepRegressor(torch.nn.Module):
     def init_weights(self):
         self.Wc.data.uniform_(-1, 1)
 
-    def forward(self, batch):
+    def forward(self, batch, get_embeddings: bool = False):
         if self.in_edge_channels > 0:
             out = self.gnn(
                 batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
@@ -72,6 +74,23 @@ class GNNSetRepRegressor(torch.nn.Module):
         t = t.view(t.size()[0], t.size()[1], self.n_elements, self.n_hidden_sets)
         t, _ = torch.max(t, dim=2)
         t = torch.sum(t, dim=1)
+        t = self.dropout(t)
+        t = self.fc1(t)
+        t = self.bn(t)
+        t = self.relu(t)
+        out = self.fc2(t)
+
+        if get_embeddings:
+            return out.squeeze(1), out_unbatched
+        else:
+            return out.squeeze(1)
+
+    def forward_set_only(self, X):
+        t = self.relu(torch.matmul(X, self.Wc))
+        t = t.view(t.size()[0], t.size()[1], self.n_elements, self.n_hidden_sets)
+        t, _ = torch.max(t, dim=2)
+        t = torch.sum(t, dim=1)
+        t = self.dropout(t)
         t = self.fc1(t)
         t = self.bn(t)
         t = self.relu(t)

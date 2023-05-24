@@ -70,13 +70,6 @@ class GNNSetRepClassifierSubstruct(torch.nn.Module):
                 [len(cc) for cc in nx.connected_components(G.to_undirected())]
             )
 
-        ub_lengths = []
-        for ub in out_unbatched:
-            ub_lengths.append(len(ub))
-
-        # print(cc_lengths)
-        # print(ub_lengths)
-
         fps = []
         for ub, ccs in zip(out_unbatched, cc_lengths):
             fp = []
@@ -93,10 +86,6 @@ class GNNSetRepClassifierSubstruct(torch.nn.Module):
                 fp_to[i, : b.shape[0], :] = b
 
             fps.append(torch.mean(fp_to, dim=-2))
-
-        # for fp in fps:
-        #     print(fp.shape)
-        # print("-------------------------------")
 
         out_unbatched = fps
 

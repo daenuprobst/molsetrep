@@ -1,7 +1,7 @@
 from typing import Optional
 import torch
 import networkx as nx
-from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear
+from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear, Dropout
 from torch.nn.functional import log_softmax
 from torch_geometric.nn import GIN
 from torch_geometric.utils import unbatch, to_networkx
@@ -19,6 +19,7 @@ class GNNSetRepClassifier(torch.nn.Module):
         n_hidden_sets: int,
         n_elements: int,
         n_classes: int = 2,
+        dropout: float = 0.0,
         gnn: Optional[torch.nn.Module] = None,
     ):
         super(GNNSetRepClassifier, self).__init__()
@@ -43,6 +44,7 @@ class GNNSetRepClassifier(torch.nn.Module):
         self.n_elements = n_elements
 
         self.Wc = Parameter(torch.FloatTensor(self.d, n_hidden_sets * n_elements))
+        self.dropout = Dropout(dropout)
         self.fc1 = Linear(n_hidden_sets, 32)
         self.bn = BatchNorm1d(32, affine=True, track_running_stats=False)
         self.relu = LeakyReLU()
@@ -75,6 +77,7 @@ class GNNSetRepClassifier(torch.nn.Module):
         t = t.view(t.size()[0], t.size()[1], self.n_elements, self.n_hidden_sets)
         t, _ = torch.max(t, dim=2)
         t = torch.sum(t, dim=1)
+        t = self.dropout(t)
         t = self.fc1(t)
         t = self.bn(t)
         t = self.relu(t)

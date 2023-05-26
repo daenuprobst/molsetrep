@@ -8,7 +8,14 @@ import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, ImbalancedSampler
 from rdkit.Chem.rdchem import Mol, Atom, Bond
-from rdkit.Chem.AllChem import MolFromSmiles, GetSymmSSSR
+from rdkit.Chem.AllChem import (
+    MolFromSmiles,
+    GetSymmSSSR,
+    HybridizationType,
+    ChiralType,
+    BondType,
+    BondStereo,
+)
 from rdkit import RDLogger
 
 from mhfp.encoder import MHFPEncoder
@@ -21,8 +28,31 @@ def __get_atom_props(atom: Atom) -> Dict[str, Any]:
         "aromatic": int(atom.GetIsAromatic() == True),
         "is_in_ring": int(atom.IsInRing() == True),
         "hydrogen_count": atom.GetTotalNumHs(),
-        "hybridization": int(atom.GetHybridization()),
-        "chiral_tag": int(atom.GetChiralTag()),
+        "hybridization_sp": int(atom.GetHybridization() == HybridizationType.SP),
+        "hybridization_sp2": int(atom.GetHybridization() == HybridizationType.SP2),
+        "hybridization_sp3": int(atom.GetHybridization() == HybridizationType.SP3),
+        "hybridization_sp3d": int(atom.GetHybridization() == HybridizationType.SP3D),
+        "hybridization_sp3d2": int(atom.GetHybridization() == HybridizationType.SP3D2),
+        "chiral_type_chi_tetrahedral_cw": int(
+            atom.GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CW
+        ),
+        "chiral_type_chi_tetrahedral_ccw": int(
+            atom.GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CCW
+        ),
+        "chiral_type_chi_other": int(atom.GetChiralTag() == ChiralType.CHI_OTHER),
+        "chiral_type_chi_tetrahedral": int(
+            atom.GetChiralTag() == ChiralType.CHI_TETRAHEDRAL
+        ),
+        "chiral_type_chi_allene": int(atom.GetChiralTag() == ChiralType.CHI_ALLENE),
+        "chiral_type_chi_squareplanar": int(
+            atom.GetChiralTag() == ChiralType.CHI_SQUAREPLANAR
+        ),
+        "chiral_type_chi_trigonalbipyramidal": int(
+            atom.GetChiralTag() == ChiralType.CHI_TRIGONALBIPYRAMIDAL
+        ),
+        "chiral_type_chi_octahedral": int(
+            atom.GetChiralTag() == ChiralType.CHI_OCTAHEDRAL
+        ),
         "degree": atom.GetDegree(),
         "radical_count": atom.GetNumRadicalElectrons(),
     }
@@ -30,9 +60,13 @@ def __get_atom_props(atom: Atom) -> Dict[str, Any]:
 
 def __get_bond_props(bond: Bond) -> Dict[str, Any]:
     return {
-        "bond_type": int(bond.GetBondType()),
-        "bond_conjugated": int(bond.GetIsConjugated()),
-        "bond_stereo": int(bond.GetStereo()),
+        "bond_type": bond.GetBondTypeAsDouble(),
+        "bond_type_aromatic": int(bond.GetBondType() == BondType.AROMATIC),
+        "bond_conjugated": int(bond.GetIsConjugated() == True),
+        "bond_stereo_z": int(bond.GetStereo() == BondStereo.STEREOZ),
+        "bond_stereo_e": int(bond.GetStereo() == BondStereo.STEREOE),
+        "bond_stereo_cis": int(bond.GetStereo() == BondStereo.STEREOCIS),
+        "bond_stereo_trans": int(bond.GetStereo() == BondStereo.STEREOTRANS),
     }
 
 
@@ -190,8 +224,12 @@ def nx_to_pyg(
     if len(data["atomic_num"]) == 1:
         data["edge_index"] = torch.tensor([[0], [0]])
         data["bond_type"] = torch.tensor([0])
+        data["bond_type_aromatic"] = torch.tensor([0])
         data["bond_conjugated"] = torch.tensor([0])
-        data["bond_stereo"] = torch.tensor([0])
+        data["bond_stereo_z"] = torch.tensor([0])
+        data["bond_stereo_e"] = torch.tensor([0])
+        data["bond_stereo_cis"] = torch.tensor([0])
+        data["bond_stereo_trans"] = torch.tensor([0])
 
     data = Data.from_dict(data)
 
@@ -254,8 +292,19 @@ def molnet_to_pyg(
             "aromatic",
             "is_in_ring",
             "hydrogen_count",
-            "hybridization",
-            "chiral_tag",
+            "hybridization_sp",
+            "hybridization_sp2",
+            "hybridization_sp3",
+            "hybridization_sp3d",
+            "hybridization_sp3d2",
+            "chiral_type_chi_tetrahedral_cw",
+            "chiral_type_chi_tetrahedral_ccw",
+            "chiral_type_chi_other",
+            "chiral_type_chi_tetrahedral",
+            "chiral_type_chi_allene",
+            "chiral_type_chi_squareplanar",
+            "chiral_type_chi_trigonalbipyramidal",
+            "chiral_type_chi_octahedral",
             "degree",
             "radical_count",
         ]
@@ -263,8 +312,12 @@ def molnet_to_pyg(
     if bond_attrs is None:
         bond_attrs = [
             "bond_type",
+            "bond_type_aromatic",
             "bond_conjugated",
-            "bond_stereo",
+            "bond_stereo_z",
+            "bond_stereo_e",
+            "bond_stereo_cis",
+            "bond_stereo_trans",
         ]
 
     smiles_to_nx_converter = smiles_to_nx

@@ -37,10 +37,11 @@ class RegressionExplainer(Explainer):
         hidden_sets, y_hidden = self.get_hidden_sets()
 
         knns = self.get_knns(hidden_sets, embeddings)
-        print(knns)
         y_hidden_nn = y_gt[knns]
 
-        clear_output(wait=True)
+        # clear_output(wait=True)
+
+        print(knns)
         plt.cla()
         plt.scatter(y_gt, y_pred)
         plt.scatter(y_hidden_nn, y_hidden, color="red")

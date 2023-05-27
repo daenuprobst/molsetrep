@@ -14,6 +14,7 @@ class Explainer:
         model: Module,
         loader: Optional[DataLoader] = None,
         device: Optional[torch.device] = None,
+        average_n_epochs: int = 0,
     ) -> None:
         self.model = model
         self.loader = loader
@@ -22,6 +23,7 @@ class Explainer:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.device = device
+        self.average_n_epochs = average_n_epochs
 
     def update(
         self,

@@ -25,6 +25,7 @@ class Trainer:
         monitor_lower_is_better: bool = True,
         explainer: Optional[Explainer] = None,
         device: Optional[torch.device] = None,
+        silent: bool = False,
     ) -> None:
         self.model = model
         self.optimizer = optimizer
@@ -44,6 +45,8 @@ class Trainer:
         self.device = device
         self.model.to(self.device)
 
+        self.silent = silent
+
         self.train_loss = LossMeter()
         self.valid_loss = LossMeter()
         self.test_loss = LossMeter()
@@ -54,6 +57,8 @@ class Trainer:
 
         if not self.monitor_lower_is_better:
             self.best_value = -self.best_value
+
+        self.hidden_set_history = []
 
     def train_step(self, batch):
         self.model.train()
@@ -115,6 +120,12 @@ class Trainer:
 
             monitored_value = monitored_metric.compute().item()
 
+            # Build history of hidden sets
+            self.hidden_set_history.append(
+                (epoch, monitored_value, self.model.Wc.cpu().detach().numpy())
+            )
+
+            # Remember the best epoch
             if self.monitor_lower_is_better:
                 best_epoch = monitored_value < self.best_value
             else:
@@ -142,14 +153,15 @@ class Trainer:
             if self.explainer:
                 self.explainer.update()
             else:
-                print(
-                    best_epoch_prefix,
-                    f"Epoch {epoch + 1}:",
-                    f"Train loss: {round(self.train_loss.compute(), 3)}",
-                    "(" + ", ".join(train_metrics) + ")",
-                    f" Valid loss: {round(self.valid_loss.compute(), 3)}",
-                    "(" + ", ".join(valid_metrics) + ")",
-                )
+                if not self.silent:
+                    print(
+                        best_epoch_prefix,
+                        f"Epoch {epoch + 1}:",
+                        f"Train loss: {round(self.train_loss.compute(), 3)}",
+                        "(" + ", ".join(train_metrics) + ")",
+                        f" Valid loss: {round(self.valid_loss.compute(), 3)}",
+                        "(" + ", ".join(valid_metrics) + ")",
+                    )
 
             self.train_loss.reset()
             self.valid_loss.reset()
@@ -159,8 +171,25 @@ class Trainer:
             for metric in self.valid_metrics:
                 metric.reset()
 
-    def test(self, test_loader: DataLoader) -> None:
+            self.hidden_set_history = sorted(
+                self.hidden_set_history,
+                reverse=not self.monitor_lower_is_better,
+                key=lambda x: x[1],
+            )
+
+    def test(self, test_loader: DataLoader, average_n_epochs: int = 0) -> None:
         self.model.load_state_dict(self.best_model)
+
+        if average_n_epochs > 0:
+            self.model.Wc = torch.nn.Parameter(
+                torch.mean(
+                    torch.FloatTensor(
+                        [hs[2] for hs in self.hidden_set_history[:average_n_epochs]]
+                    ),
+                    dim=0,
+                ).to(self.device)
+            )
+
         for batch in test_loader:
             batch.to(self.device)
             output, loss = self.test_step(batch)
@@ -173,12 +202,15 @@ class Trainer:
             for metric in self.test_metrics:
                 metric.update(y_pred.cpu(), batch.y.cpu())
 
-        print("------------------------------------------------")
-        print(f"Using Epoch {self.best_epoch + 1} for testing...")
-        print(f"Test loss: {round(self.test_loss.compute(), 3)}")
+        if not self.silent:
+            print("------------------------------------------------")
+            print(f"Using Epoch {self.best_epoch + 1} for testing...")
+            print(f"Test loss: {round(self.test_loss.compute(), 3)}")
 
-        for metric in self.test_metrics:
-            print(f"Test {type(metric).__name__}:", round(metric.compute().item(), 3))
+            for metric in self.test_metrics:
+                print(
+                    f"Test {type(metric).__name__}:", round(metric.compute().item(), 3)
+                )
 
         self.test_loss.reset()
 

@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear
+from torch.nn import Parameter, Linear, BatchNorm1d, ReLU, LeakyReLU, Linear
 from torch.nn.functional import log_softmax
 
 
@@ -13,7 +13,7 @@ class SetRepClassifier(torch.nn.Module):
         self.fc1 = Linear(n_hidden_sets, 32)
         self.bn = BatchNorm1d(32, affine=True)
         self.fc2 = Linear(32, n_classes)
-        self.relu = LeakyReLU()
+        self.relu = ReLU()
 
         self.init_weights()
 

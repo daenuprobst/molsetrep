@@ -202,6 +202,7 @@ class Trainer:
             for metric in self.test_metrics:
                 metric.update(y_pred.cpu(), batch.y.cpu())
 
+        results = []
         if not self.silent:
             print("------------------------------------------------")
             print(f"Using Epoch {self.best_epoch + 1} for testing...")
@@ -211,8 +212,20 @@ class Trainer:
                 print(
                     f"Test {type(metric).__name__}:", round(metric.compute().item(), 3)
                 )
+        else:
+            result = {
+                "best_epoch": self.best_epoch + 1,
+                "loss": self.test_loss.compute(),
+            }
+
+            for metric in self.test_metrics:
+                result[type(metric).__name__] = metric.compute().item()
+
+            results.append(result)
 
         self.test_loss.reset()
 
         for metric in self.test_metrics:
             metric.reset()
+
+        return results

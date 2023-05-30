@@ -6,3 +6,4 @@ from molsetrep.models.gnn_set_rep_classifier_substruct import (
     GNNSetRepClassifierSubstruct,
 )
 from molsetrep.models.gine import GINE
+from molsetrep.models.gnn_regressor import GNNRegressor

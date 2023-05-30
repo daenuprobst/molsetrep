@@ -35,7 +35,7 @@ class GNNSetRepClassifier(torch.nn.Module):
                     hidden_channels,
                     num_layers,
                     edge_dim=in_edge_channels,
-                    jk="cat",
+                    # jk="cat",
                 )
             else:
                 self.gnn = GIN(in_channels, hidden_channels, num_layers)

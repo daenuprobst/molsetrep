@@ -14,6 +14,8 @@ from rdkit.Chem import (
     Descriptors,
 )
 
+from sklearn.preprocessing import StandardScaler
+
 from molsetrep.encoders.encoder import Encoder
 
 
@@ -23,36 +25,56 @@ class SECMQNFPEncoder(Encoder):
 
     def encode(
         self,
-        smiles: Iterable[str],
-        labels: Iterable[Any],
+        smiles_sets: Iterable[Iterable[str]],
+        labels_sets: Iterable[Iterable[Any]],
         label_dtype: Optional[torch.dtype] = None,
         radius: int = 3,
         rings: bool = True,
         kekulize: bool = True,
         min_radius: int = 1,
+        standardize: bool = True,
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fps = []
-        for smi in smiles:
-            substructs = set(
-                MHFPEncoder.shingling_from_mol(
-                    MolFromSmiles(smi), radius, rings, kekulize, min_radius
+        scaler = StandardScaler()
+
+        fps_sets = []
+        for smiles, labels in zip(smiles_sets, labels_sets):
+            fps = []
+            for smi in smiles:
+                substructs = set(
+                    MHFPEncoder.shingling_from_mol(
+                        MolFromSmiles(smi), radius, rings, kekulize, min_radius
+                    )
                 )
-            )
 
-            fp = []
+                fp = []
 
-            for substruct in substructs:
-                submol = MolFromSmiles(substruct, sanitize=False)
-                submol.UpdatePropertyCache(strict=False)
-                GetSymmSSSR(submol)
-                ds = rdMolDescriptors.MQNs_(submol)
-                ds = list(ds)
-                ds.append(Descriptors.MolLogP(submol))
-                ds.append(Descriptors.TPSA(submol))
-                fp.append(np.array(ds))
+                for substruct in substructs:
+                    submol = MolFromSmiles(substruct, sanitize=False)
+                    submol.UpdatePropertyCache(strict=False)
+                    GetSymmSSSR(submol)
+                    ds = rdMolDescriptors.MQNs_(submol)
+                    ds = list(ds)
+                    # ds = []
+                    # ds.append(Descriptors.MolLogP(submol))
+                    # ds.append(Descriptors.TPSA(submol))
+                    fp.append(np.array(ds))
 
-            fps.append(fp)
+                if standardize:
+                    scaler.partial_fit(fp)
 
-        return super().to_tensor_dataset(fps, labels, label_dtype)
+                fps.append(fp)
+            fps_sets.append(fps)
+
+        if standardize:
+            for i in range(len(fps_sets)):
+                for j in range(len(fps_sets[i])):
+                    fps_sets[i][j] = scaler.transform(fps_sets[i][j])
+
+        result = []
+
+        for fps, labels in zip(fps_sets, labels_sets):
+            result.append(super().to_tensor_dataset(fps, labels, label_dtype))
+
+        return tuple(result)

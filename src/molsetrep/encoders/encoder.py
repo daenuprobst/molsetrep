@@ -30,8 +30,5 @@ class Encoder:
 
     def encode(
         self,
-        mols: Iterable[Mol],
-        labels: Iterable[Any],
-        label_dtype: Optional[torch.dtype] = None,
     ) -> TensorDataset:
         ...

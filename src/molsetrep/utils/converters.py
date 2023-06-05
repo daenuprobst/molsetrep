@@ -221,15 +221,25 @@ def nx_to_pyg(
 
     data["edge_index"] = edge_index.view(2, -1)
 
-    if len(data["atomic_num"]) == 1:
-        data["edge_index"] = torch.tensor([[0], [0]])
-        data["bond_type"] = torch.tensor([0])
-        data["bond_type_aromatic"] = torch.tensor([0])
-        data["bond_conjugated"] = torch.tensor([0])
-        data["bond_stereo_z"] = torch.tensor([0])
-        data["bond_stereo_e"] = torch.tensor([0])
-        data["bond_stereo_cis"] = torch.tensor([0])
-        data["bond_stereo_trans"] = torch.tensor([0])
+    if data["edge_index"].shape[1] == 0:
+        s = data["edge_index"].shape[0]
+        data["bond_type"] = torch.tensor([])
+        data["bond_type_aromatic"] = torch.tensor([])
+        data["bond_conjugated"] = torch.tensor([])
+        data["bond_stereo_z"] = torch.tensor([])
+        data["bond_stereo_e"] = torch.tensor([])
+        data["bond_stereo_cis"] = torch.tensor([])
+        data["bond_stereo_trans"] = torch.tensor([])
+
+    # if len(data["atomic_num"]) == 1:
+    #     data["edge_index"] = torch.tensor([[0], [0]])
+    #     data["bond_type"] = torch.tensor([0])
+    #     data["bond_type_aromatic"] = torch.tensor([0])
+    #     data["bond_conjugated"] = torch.tensor([0])
+    #     data["bond_stereo_z"] = torch.tensor([0])
+    #     data["bond_stereo_e"] = torch.tensor([0])
+    #     data["bond_stereo_cis"] = torch.tensor([0])
+    #     data["bond_stereo_trans"] = torch.tensor([0])
 
     data = Data.from_dict(data)
 

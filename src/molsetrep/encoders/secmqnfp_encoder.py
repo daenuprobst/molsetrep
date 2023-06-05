@@ -6,12 +6,13 @@ import numpy as np
 from torch.utils.data import TensorDataset
 from mhfp.encoder import MHFPEncoder
 from rdkit import RDLogger
-from rdkit.Chem.AllChem import MolFromSmiles
+from rdkit.Chem.AllChem import MolFromSmiles, GetHashedMorganFingerprint
 from rdkit.Chem import (
     rdMolDescriptors,
     MolFromSmiles,
     GetSymmSSSR,
     Descriptors,
+    MACCSkeys,
 )
 
 from sklearn.preprocessing import StandardScaler

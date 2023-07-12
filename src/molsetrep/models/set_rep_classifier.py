@@ -30,5 +30,6 @@ class SetRepClassifier(torch.nn.Module):
         t = self.fc1(t)
         t = self.relu(t)
         out = self.fc2(t)
+        out = log_softmax(out, dim=1)
 
-        return log_softmax(out, dim=1)
+        return out

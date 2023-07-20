@@ -121,9 +121,10 @@ class Trainer:
             monitored_value = monitored_metric.compute().item()
 
             # Build history of hidden sets
-            self.hidden_set_history.append(
-                (epoch, monitored_value, self.model.Wc.cpu().detach().numpy())
-            )
+            if hasattr(self.model, "Wc"):
+                self.hidden_set_history.append(
+                    (epoch, monitored_value, self.model.Wc.cpu().detach().numpy())
+                )
 
             # Remember the best epoch
             if self.monitor_lower_is_better:

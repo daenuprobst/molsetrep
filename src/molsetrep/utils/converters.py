@@ -23,11 +23,39 @@ from mhfp.encoder import MHFPEncoder
 
 def __get_atom_props(atom: Atom) -> Dict[str, Any]:
     return {
-        "atomic_num": atom.GetAtomicNum(),
-        "charge": atom.GetFormalCharge(),
+        "h": int(atom.GetAtomicNum() == 1),
+        "he": int(atom.GetAtomicNum() == 2),
+        "li": int(atom.GetAtomicNum() == 3),
+        "be": int(atom.GetAtomicNum() == 4),
+        "b": int(atom.GetAtomicNum() == 5),
+        "c": int(atom.GetAtomicNum() == 6),
+        "n": int(atom.GetAtomicNum() == 7),
+        "o": int(atom.GetAtomicNum() == 8),
+        "f": int(atom.GetAtomicNum() == 9),
+        "ne": int(atom.GetAtomicNum() == 10),
+        "na": int(atom.GetAtomicNum() == 11),
+        "mg": int(atom.GetAtomicNum() == 12),
+        "al": int(atom.GetAtomicNum() == 13),
+        "si": int(atom.GetAtomicNum() == 14),
+        "p": int(atom.GetAtomicNum() == 15),
+        "s": int(atom.GetAtomicNum() == 16),
+        "cl": int(atom.GetAtomicNum() == 17),
+        "k": int(atom.GetAtomicNum() == 19),
+        "ca": int(atom.GetAtomicNum() == 20),
+        "fe": int(atom.GetAtomicNum() == 26),
+        "charge_-2": int(atom.GetFormalCharge() == -2),
+        "charge_-1": int(atom.GetFormalCharge() == -1),
+        "charge_0": int(atom.GetFormalCharge() == 0),
+        "charge_+1": int(atom.GetFormalCharge() == 1),
+        "charge_+2": int(atom.GetFormalCharge() == 2),
         "aromatic": int(atom.GetIsAromatic() == True),
         "is_in_ring": int(atom.IsInRing() == True),
-        "hydrogen_count": atom.GetTotalNumHs(),
+        "hydrogen_count_0": int(atom.GetTotalNumHs() == 0),
+        "hydrogen_count_1": int(atom.GetTotalNumHs() == 1),
+        "hydrogen_count_2": int(atom.GetTotalNumHs() == 2),
+        "hydrogen_count_3": int(atom.GetTotalNumHs() == 3),
+        "hydrogen_count_4": int(atom.GetTotalNumHs() == 4),
+        "hydrogen_count_4+": int(atom.GetTotalNumHs() > 4),
         "hybridization_sp": int(atom.GetHybridization() == HybridizationType.SP),
         "hybridization_sp2": int(atom.GetHybridization() == HybridizationType.SP2),
         "hybridization_sp3": int(atom.GetHybridization() == HybridizationType.SP3),
@@ -53,16 +81,36 @@ def __get_atom_props(atom: Atom) -> Dict[str, Any]:
         "chiral_type_chi_octahedral": int(
             atom.GetChiralTag() == ChiralType.CHI_OCTAHEDRAL
         ),
-        "degree": atom.GetDegree(),
-        "radical_count": atom.GetNumRadicalElectrons(),
+        "degree_0": int(atom.GetDegree() == 0),
+        "degree_1": int(atom.GetDegree() == 1),
+        "degree_2": int(atom.GetDegree() == 2),
+        "degree_3": int(atom.GetDegree() == 3),
+        "degree_4": int(atom.GetDegree() == 4),
+        "degree_5": int(atom.GetDegree() == 5),
+        "degree_5+": int(atom.GetDegree() > 5),
+        # "radical_count": atom.GetNumRadicalElectrons(),
+        "mass": atom.GetMass() * 0.01,
     }
+
+    # onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.ATOM_FEATURES['atomic_num']) + \
+    # onek_encoding_unk(atom.GetTotalDegree(), PARAMS.ATOM_FEATURES['degree']) + \
+    # onek_encoding_unk(atom.GetFormalCharge(), PARAMS.ATOM_FEATURES['formal_charge']) + \
+    # onek_encoding_unk(int(atom.GetChiralTag()), PARAMS.ATOM_FEATURES['chiral_tag']) + \
+    # onek_encoding_unk(int(atom.GetTotalNumHs()), PARAMS.ATOM_FEATURES['num_Hs']) + \
+    # onek_encoding_unk(int(atom.GetHybridization()), PARAMS.ATOM_FEATURES['hybridization']) + \
+    # [1 if atom.GetIsAromatic() else 0] + \
+    # [atom.GetMass() * 0.01]
 
 
 def __get_bond_props(bond: Bond) -> Dict[str, Any]:
+    bond_type = bond.GetBondType()
     return {
-        "bond_type": bond.GetBondTypeAsDouble(),
-        "bond_type_aromatic": int(bond.GetBondType() == BondType.AROMATIC),
+        "bond_single": 1 if bond_type == BondType.SINGLE else 0,
+        "bond_double": 1 if bond_type == BondType.DOUBLE else 0,
+        "bond_triple": 1 if bond_type == BondType.TRIPLE else 0,
+        "bond_aromatic": 1 if bond_type == BondType.AROMATIC else 0,
         "bond_conjugated": int(bond.GetIsConjugated() == True),
+        "bond_is_in_ring": int(bond.IsInRing() == True),
         "bond_stereo_z": int(bond.GetStereo() == BondStereo.STEREOZ),
         "bond_stereo_e": int(bond.GetStereo() == BondStereo.STEREOE),
         "bond_stereo_cis": int(bond.GetStereo() == BondStereo.STEREOCIS),
@@ -223,23 +271,16 @@ def nx_to_pyg(
 
     if data["edge_index"].shape[1] == 0:
         s = data["edge_index"].shape[0]
-        data["bond_type"] = torch.tensor([])
-        data["bond_type_aromatic"] = torch.tensor([])
+        data["bond_single"] = torch.tensor([])
+        data["bond_double"] = torch.tensor([])
+        data["bond_triple"] = torch.tensor([])
+        data["bond_aromatic"] = torch.tensor([])
         data["bond_conjugated"] = torch.tensor([])
+        data["bond_is_in_ring"] = torch.tensor([])
         data["bond_stereo_z"] = torch.tensor([])
         data["bond_stereo_e"] = torch.tensor([])
         data["bond_stereo_cis"] = torch.tensor([])
         data["bond_stereo_trans"] = torch.tensor([])
-
-    # if len(data["atomic_num"]) == 1:
-    #     data["edge_index"] = torch.tensor([[0], [0]])
-    #     data["bond_type"] = torch.tensor([0])
-    #     data["bond_type_aromatic"] = torch.tensor([0])
-    #     data["bond_conjugated"] = torch.tensor([0])
-    #     data["bond_stereo_z"] = torch.tensor([0])
-    #     data["bond_stereo_e"] = torch.tensor([0])
-    #     data["bond_stereo_cis"] = torch.tensor([0])
-    #     data["bond_stereo_trans"] = torch.tensor([0])
 
     data = Data.from_dict(data)
 
@@ -297,11 +338,39 @@ def molnet_to_pyg(
 
     if atom_attrs is None:
         atom_attrs = [
-            "atomic_num",
-            "charge",
+            "h",
+            "he",
+            "li",
+            "be",
+            "b",
+            "c",
+            "n",
+            "o",
+            "f",
+            "ne",
+            "na",
+            "mg",
+            "al",
+            "si",
+            "p",
+            "s",
+            "cl",
+            "k",
+            "ca",
+            "fe",
+            "charge_-2",
+            "charge_-1",
+            "charge_0",
+            "charge_+1",
+            "charge_+2",
             "aromatic",
             "is_in_ring",
-            "hydrogen_count",
+            "hydrogen_count_0",
+            "hydrogen_count_1",
+            "hydrogen_count_2",
+            "hydrogen_count_3",
+            "hydrogen_count_4",
+            "hydrogen_count_4+",
             "hybridization_sp",
             "hybridization_sp2",
             "hybridization_sp3",
@@ -315,15 +384,25 @@ def molnet_to_pyg(
             "chiral_type_chi_squareplanar",
             "chiral_type_chi_trigonalbipyramidal",
             "chiral_type_chi_octahedral",
-            "degree",
-            "radical_count",
+            "degree_0",
+            "degree_1",
+            "degree_2",
+            "degree_3",
+            "degree_4",
+            "degree_5",
+            "degree_5+",
+            # "radical_count",
+            "mass",
         ]
 
     if bond_attrs is None:
         bond_attrs = [
-            "bond_type",
-            "bond_type_aromatic",
+            "bond_single",
+            "bond_double",
+            "bond_triple",
+            "bond_aromatic",
             "bond_conjugated",
+            "bond_is_in_ring",
             "bond_stereo_z",
             "bond_stereo_e",
             "bond_stereo_cis",

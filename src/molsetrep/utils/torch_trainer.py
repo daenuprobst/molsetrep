@@ -95,9 +95,6 @@ class TorchTrainer:
                 for metric in self.train_metrics:
                     metric.update(y_pred.cpu(), y.cpu())
 
-            if self.scheduler is not None:
-                self.scheduler.step()
-
             for X, y in valid_loader:
                 X = X.to(self.device)
                 y = y.to(self.device)
@@ -110,6 +107,9 @@ class TorchTrainer:
                     y_pred = output.max(1)[1]
                 for metric in self.valid_metrics:
                     metric.update(y_pred.cpu(), y.cpu())
+
+            if self.scheduler is not None:
+                self.scheduler.step(self.valid_loss.compute().item())
 
             best_epoch = False
             monitored_metric = self.valid_loss

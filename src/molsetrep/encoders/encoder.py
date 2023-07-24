@@ -53,9 +53,7 @@ class Encoder:
         for i, x in enumerate(X2):
             X2_tensor[i, : len(x), :] = torch.FloatTensor(np.array(x))
 
-        return TensorDataset(
-            torch.stack((X_tensor, X2_tensor)), torch.tensor(y, dtype=y_dtype)
-        )
+        return TensorDataset(X_tensor, X2_tensor, torch.tensor(y, dtype=y_dtype))
 
     def encode(
         self,

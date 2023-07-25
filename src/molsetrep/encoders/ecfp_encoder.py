@@ -143,7 +143,6 @@ class ECFPEncoder(Encoder):
             #         rdMolDescriptors.CalcChi1v(mol),
             #         rdMolDescriptors.CalcChi2n(mol),
             #         rdMolDescriptors.CalcChi2v(mol),
-            #         rdMolDescriptors.GetUSRScore(mol),
             #     ]
             #     + rdMolDescriptors.CalcAUTOCORR2D(mol)
             #     + list(rdMolDescriptors.CalcCrippenDescriptors(mol))

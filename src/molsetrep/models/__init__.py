@@ -3,6 +3,7 @@ from molsetrep.models.gnn_set_rep_regressor import GNNSetRepRegressor
 from molsetrep.models.set_rep_classifier import SetRepClassifier
 from molsetrep.models.set_rep_regressor import SetRepRegressor
 from molsetrep.models.dual_set_rep_classifier import DualSetRepClassifier
+from molsetrep.models.dual_set_rep_regressor import DualSetRepRegressor
 from molsetrep.models.gnn_set_rep_classifier_substruct import (
     GNNSetRepClassifierSubstruct,
 )

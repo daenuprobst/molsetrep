@@ -2,9 +2,13 @@ from typing import Optional, Iterable
 
 import torch
 
+import numpy as np
+
 from torch.optim.lr_scheduler import LRScheduler
 from torch_geometric.data import DataLoader
 from torcheval.metrics.metric import Metric
+
+from scipy.signal import savgol_filter
 
 from molsetrep.utils.loss_meter import LossMeter
 
@@ -51,6 +55,9 @@ class MultisetTorchTrainer:
         self.best_model = None
         self.best_epoch = 0
         self.best_value = 99999
+
+        self.monitored_values = []
+        self.models = []
 
         if not self.monitor_lower_is_better:
             self.best_value = -self.best_value
@@ -120,6 +127,8 @@ class MultisetTorchTrainer:
                 monitored_metric = self.valid_metrics[self.monitor_metric]
 
             monitored_value = monitored_metric.compute().item()
+            self.monitored_values.append(monitored_value)
+            self.models.append(self.model.state_dict())
 
             # Build history of hidden sets
             # self.hidden_set_history.append(
@@ -174,6 +183,22 @@ class MultisetTorchTrainer:
                 reverse=not self.monitor_lower_is_better,
                 key=lambda x: x[1],
             )
+
+        # # Get the smoothed best epoch
+        # monitored_values = np.array(self.monitored_values)
+        # monitored_values = savgol_filter(monitored_values, 5, 3)
+        # best_epoch = -1
+
+        # # Remember the best epoch
+        # if self.monitor_lower_is_better:
+        #     best_epoch = np.argmin(monitored_values)
+        # else:
+        #     best_epoch = np.argmax(monitored_values)
+
+        # self.best_model = self.models[best_epoch]
+        # self.best_epoch = best_epoch
+
+        # self.monitored_values = []
 
     def test(self, test_loader: DataLoader, average_n_epochs: int = 0) -> None:
         self.model.load_state_dict(self.best_model)

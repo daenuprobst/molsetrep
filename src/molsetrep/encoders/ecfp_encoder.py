@@ -7,6 +7,7 @@ from torch.utils.data import TensorDataset
 from mhfp.encoder import MHFPEncoder
 from rdkit import RDLogger
 from rdkit.Chem.AllChem import MolFromSmiles, GetHashedMorganFingerprint
+from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from rdkit.Chem import (
     rdMolDescriptors,
     MolFromSmiles,
@@ -15,33 +16,14 @@ from rdkit.Chem import (
     MACCSkeys,
     BondType,
     HybridizationType,
+    GetPeriodicTable,
 )
 
+PT = GetPeriodicTable()
 
 from sklearn.preprocessing import StandardScaler
 
 from molsetrep.encoders.encoder import Encoder
-
-
-def get_mol_descriptors(mol, missingVal=0):
-    """calculate the full list of descriptors for a molecule
-
-    missingVal is used if the descriptor cannot be calculated
-    """
-    res = {}
-    for nm, fn in Descriptors._descList:
-        # some of the descriptor fucntions can throw errors if they fail, catch those here:
-        try:
-            val = fn(mol)
-        except:
-            # print the error message:
-            import traceback
-
-            traceback.print_exc()
-            # and set the descriptor value to whatever missingVal is
-            val = missingVal
-        res[nm] = val
-    return res
 
 
 def one_hot_encode(prop: Any, vals: Union[int, Iterable[int]]):
@@ -75,6 +57,7 @@ class ECFPEncoder(Encoder):
         fps_g = []
         for smi in smiles:
             mol = MolFromSmiles(smi)
+            ComputeGasteigerCharges(mol)
             fp_atomic = []
             for atom in mol.GetAtoms():
                 atomic_invariants = []
@@ -103,9 +86,12 @@ class ECFPEncoder(Encoder):
                 atomic_invariants += one_hot_encode(atom.GetChiralTag(), 4)
                 atomic_invariants.append(atom.GetMass())
                 atomic_invariants.append(int(atom.IsInRing() == True))
+                atomic_invariants.append(float(atom.GetProp("_GasteigerCharge")))
+                # atomic_invariants.append(PT.GetRvdw(atom.GetAtomicNum()))
 
                 total_hs = atom.GetNumExplicitHs() + atom.GetNumImplicitHs()
                 atomic_invariants += one_hot_encode(total_hs, 6)
+
                 fp_atomic.append(atomic_invariants)
 
             fp_bond = []
@@ -126,14 +112,42 @@ class ECFPEncoder(Encoder):
                 bond_invariants += one_hot_encode(atom_a.GetDegree(), 5)
                 bond_invariants += one_hot_encode(atom_b.GetDegree(), 5)
 
+                bond_invariants.append(float(atom_a.GetProp("_GasteigerCharge")))
+                bond_invariants.append(float(atom_b.GetProp("_GasteigerCharge")))
+
                 bond_invariants += one_hot_encode(int(bond.GetStereo()), 6)
                 bond_invariants.append(int(bond.GetIsAromatic() == True))
                 bond_invariants.append(int(bond.GetIsConjugated() == True))
+                bond_invariants.append(bond.GetValenceContrib(atom_a))
+                bond_invariants.append(bond.GetValenceContrib(atom_b))
 
                 fp_bond.append(bond_invariants)
 
-            dsc = get_mol_descriptors(mol)
-            fp_global = [dsc["ExactMolWt"], dsc["MolLogP"], dsc["qed"]]
+            if len(fp_bond) == 0:
+                fp_bond.append([0] * (4 + 202 + 12 + 7 + 4))
+
+            fp_global = []
+            # fp_global.append(
+            #     [
+            #         Descriptors.MolLogP(mol),
+            #         Descriptors.qed(mol),
+            #         rdMolDescriptors.CalcExactMolWt(mol),
+            #         rdMolDescriptors.CalcTPSA(mol),
+            #         rdMolDescriptors.CalcPhi(mol),
+            #         rdMolDescriptors.CalcKappa1(mol),
+            #         rdMolDescriptors.CalcKappa2(mol),
+            #         rdMolDescriptors.CalcKappa3(mol),
+            #         rdMolDescriptors.CalcChi0n(mol),
+            #         rdMolDescriptors.CalcChi0v(mol),
+            #         rdMolDescriptors.CalcChi1n(mol),
+            #         rdMolDescriptors.CalcChi1v(mol),
+            #         rdMolDescriptors.CalcChi2n(mol),
+            #         rdMolDescriptors.CalcChi2v(mol),
+            #         rdMolDescriptors.GetUSRScore(mol),
+            #     ]
+            #     + rdMolDescriptors.CalcAUTOCORR2D(mol)
+            #     + list(rdMolDescriptors.CalcCrippenDescriptors(mol))
+            # )
 
             fps_a.append(fp_atomic)
             fps_b.append(fp_bond)

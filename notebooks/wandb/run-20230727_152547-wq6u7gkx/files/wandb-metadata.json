@@ -1,0 +1,164 @@
+{
+    "os": "Linux-6.2.6-76060206-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-07-27T13:25:48.005140",
+    "startedAt": "2023-07-27T13:25:47.160874",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "<python with no main file>",
+    "git": {
+        "remote": "git@github.com:daenuprobst/molsetrep.git",
+        "commit": "1649134cf2a55bee9f4499c9ac313f96ba8bf250"
+    },
+    "email": null,
+    "root": "/home/daenu/Code/molsetrep",
+    "host": "pop-os",
+    "username": "daenu",
+    "executable": "/home/daenu/miniconda3/envs/molsetrep/bin/python",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 3597.179083333333,
+        "min": 800.0,
+        "max": 4933.333333333333
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4449.037,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3318.231,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5225.808,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3965.049,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5248.171,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5280.657,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5166.123,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5179.606,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5291.737,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3711.35,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 914.329,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 1097.776,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 799.742,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 2684.682,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 3400.0,
+            "min": 800.0,
+            "max": 4200.0
+        }
+    ],
+    "disk": {
+        "total": 906.9564056396484,
+        "used": 56.98806381225586
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Ti",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Ti",
+            "memory_total": 12878610432
+        }
+    ],
+    "memory": {
+        "total": 62.500465393066406
+    }
+}

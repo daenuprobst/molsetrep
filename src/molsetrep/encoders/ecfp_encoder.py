@@ -106,47 +106,48 @@ class ECFPEncoder(Encoder):
                     bond_type == BondType.TRIPLE,
                     bond_type == BondType.AROMATIC,
                 ]
-
-                bond_invariants += one_hot_encode(atom_a.GetAtomicNum(), 100)
-                bond_invariants += one_hot_encode(atom_b.GetAtomicNum(), 100)
-                bond_invariants += one_hot_encode(atom_a.GetDegree(), 5)
-                bond_invariants += one_hot_encode(atom_b.GetDegree(), 5)
-
-                bond_invariants.append(float(atom_a.GetProp("_GasteigerCharge")))
-                bond_invariants.append(float(atom_b.GetProp("_GasteigerCharge")))
-
                 bond_invariants += one_hot_encode(int(bond.GetStereo()), 6)
                 bond_invariants.append(int(bond.GetIsAromatic() == True))
                 bond_invariants.append(int(bond.GetIsConjugated() == True))
                 bond_invariants.append(bond.GetValenceContrib(atom_a))
                 bond_invariants.append(bond.GetValenceContrib(atom_b))
 
+                bond_invariants += one_hot_encode(atom_a.GetAtomicNum(), 100)
+                bond_invariants += one_hot_encode(atom_b.GetAtomicNum(), 100)
+                bond_invariants += one_hot_encode(atom_a.GetDegree(), 5)
+                bond_invariants += one_hot_encode(atom_b.GetDegree(), 5)
+                bond_invariants.append(int(atom_a.IsInRing() == True))
+                bond_invariants.append(int(atom_b.IsInRing() == True))
+
+                bond_invariants.append(float(atom_a.GetProp("_GasteigerCharge")))
+                bond_invariants.append(float(atom_b.GetProp("_GasteigerCharge")))
+
                 fp_bond.append(bond_invariants)
 
             if len(fp_bond) == 0:
-                fp_bond.append([0] * (4 + 202 + 12 + 7 + 4))
+                fp_bond.append([0] * (4 + 202 + 12 + 7 + 8))
 
             fp_global = []
-            # fp_global.append(
-            #     [
-            #         Descriptors.MolLogP(mol),
-            #         Descriptors.qed(mol),
-            #         rdMolDescriptors.CalcExactMolWt(mol),
-            #         rdMolDescriptors.CalcTPSA(mol),
-            #         rdMolDescriptors.CalcPhi(mol),
-            #         rdMolDescriptors.CalcKappa1(mol),
-            #         rdMolDescriptors.CalcKappa2(mol),
-            #         rdMolDescriptors.CalcKappa3(mol),
-            #         rdMolDescriptors.CalcChi0n(mol),
-            #         rdMolDescriptors.CalcChi0v(mol),
-            #         rdMolDescriptors.CalcChi1n(mol),
-            #         rdMolDescriptors.CalcChi1v(mol),
-            #         rdMolDescriptors.CalcChi2n(mol),
-            #         rdMolDescriptors.CalcChi2v(mol),
-            #     ]
-            #     + rdMolDescriptors.CalcAUTOCORR2D(mol)
-            #     + list(rdMolDescriptors.CalcCrippenDescriptors(mol))
-            # )
+            fp_global.append(
+                [
+                    Descriptors.MolLogP(mol),
+                    Descriptors.qed(mol),
+                    rdMolDescriptors.CalcExactMolWt(mol),
+                    rdMolDescriptors.CalcTPSA(mol),
+                    rdMolDescriptors.CalcPhi(mol),
+                    rdMolDescriptors.CalcKappa1(mol),
+                    rdMolDescriptors.CalcKappa2(mol),
+                    rdMolDescriptors.CalcKappa3(mol),
+                    rdMolDescriptors.CalcChi0n(mol),
+                    rdMolDescriptors.CalcChi0v(mol),
+                    rdMolDescriptors.CalcChi1n(mol),
+                    rdMolDescriptors.CalcChi1v(mol),
+                    rdMolDescriptors.CalcChi2n(mol),
+                    rdMolDescriptors.CalcChi2v(mol),
+                ]
+                + rdMolDescriptors.CalcAUTOCORR2D(mol)
+                + list(rdMolDescriptors.CalcCrippenDescriptors(mol))
+            )
 
             fps_a.append(fp_atomic)
             fps_b.append(fp_bond)

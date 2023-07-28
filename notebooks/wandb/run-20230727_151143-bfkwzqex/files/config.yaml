@@ -1,0 +1,66 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.12
+    cli_version: 0.15.7
+    framework: lightning
+    is_jupyter_run: true
+    is_kaggle_kernel: false
+    start_time: 1690463508.407811
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 21
+      - 41
+      - 53
+      - 55
+      - 77
+      - 103
+      2:
+      - 1
+      - 5
+      - 9
+      - 21
+      - 41
+      - 53
+      - 55
+      - 77
+      - 103
+      3:
+      - 1
+      - 23
+      4: 3.10.12
+      5: 0.15.7
+      8:
+      - 1
+      - 5
+n_hidden_sets:
+  desc: null
+  value: 16
+n_hidden_sets_2:
+  desc: null
+  value: 16
+n_elements:
+  desc: null
+  value: 8
+n_elements_2:
+  desc: null
+  value: 8
+d:
+  desc: null
+  value: 141
+d_2:
+  desc: null
+  value: 233
+n_classes:
+  desc: null
+  value: 2
+class_weights:
+  desc: null
+  value:
+  - 1.0154639175257731
+  - 0.985

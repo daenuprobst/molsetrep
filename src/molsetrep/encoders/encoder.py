@@ -42,7 +42,9 @@ class Encoder:
         X_tensor = torch.zeros((n, max_cardinality, d))
 
         for i, x in enumerate(X):
-            X_tensor[i, : len(x), :] = torch.FloatTensor(np.nan_to_num(np.array(x)))
+            X_tensor[i, : len(x), :] = torch.FloatTensor(
+                np.nan_to_num(np.array(x), nan=0.0, posinf=10**6, neginf=-(10**6))
+            )
 
         n = len(X2)
         d = len(X2[0][0])
@@ -51,7 +53,9 @@ class Encoder:
         X2_tensor = torch.zeros((n, max_cardinality, d))
 
         for i, x in enumerate(X2):
-            X2_tensor[i, : len(x), :] = torch.FloatTensor(np.nan_to_num(np.array(x)))
+            X2_tensor[i, : len(x), :] = torch.FloatTensor(
+                np.nan_to_num(np.array(x), nan=0.0, posinf=10**6, neginf=-(10**6))
+            )
 
         return TensorDataset(X_tensor, X2_tensor, torch.tensor(y, dtype=y_dtype))
 

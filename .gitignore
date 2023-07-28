@@ -57,3 +57,4 @@ MANIFEST
 lightning_logs
 wandb
 
+*.ckpt

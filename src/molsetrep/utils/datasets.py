@@ -7,4 +7,4 @@ def molnet_loader(name: str, **kwargs):
 
     tasks, dataset, lipo_transformers = dc_set
     train, valid, test = dataset
-    return train, valid, test
+    return train, valid, test, tasks

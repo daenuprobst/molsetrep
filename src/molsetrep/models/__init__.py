@@ -14,3 +14,12 @@ from molsetrep.models.gnn_deep_set_classifier import GNNDeepSetClassifier
 from molsetrep.models.gnn_classifier import GNNClassifier
 
 from molsetrep.models.focal_loss import FocalLoss
+
+from molsetrep.models.sr import (
+    SRClassifier,
+    SRRegressor,
+    LightningSRClassifier,
+    LightningSRRegressor,
+)
+from molsetrep.models.dual_sr import DualSRClassifier, DualSRRegressor
+from molsetrep.models.triple_sr import TripleSRClassifier, TripleSRRegressor

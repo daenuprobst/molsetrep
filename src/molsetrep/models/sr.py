@@ -59,21 +59,22 @@ class SRRegressor(Module):
 class LightningSRClassifier(pl.LightningModule):
     def __init__(
         self,
-        n_hidden_sets: int,
-        n_elements: int,
-        d: int,
+        n_hidden_sets: List[int],
+        n_elements: List[int],
+        d: List[int],
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
     ) -> None:
         super(LightningSRClassifier, self).__init__()
+        self.save_hyperparameters()
 
         self.class_weights = class_weights
         self.learning_rate = learning_rate
 
         self.sr_classifier = SRClassifier(
-            n_hidden_sets, n_elements, d, n_classes, n_hidden_channels
+            n_hidden_sets[0], n_elements[0], d[0], n_classes, n_hidden_channels
         )
 
         # Criterions
@@ -147,20 +148,19 @@ class LightningSRClassifier(pl.LightningModule):
 class LightningSRRegressor(pl.LightningModule):
     def __init__(
         self,
-        n_hidden_sets: int,
-        n_elements: int,
-        d: int,
-        n_classes: int,
+        n_hidden_sets: List[int],
+        n_elements: List[int],
+        d: List[int],
         n_hidden_channels: Optional[List] = None,
-        class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
     ) -> None:
         super(LightningSRRegressor, self).__init__()
+        self.save_hyperparameters()
 
         self.learning_rate = learning_rate
 
         self.sr_regressor = SRRegressor(
-            n_hidden_sets, n_elements, d, n_classes, n_hidden_channels
+            n_hidden_sets[0], n_elements[0], d[0], n_hidden_channels
         )
 
         # Metrics

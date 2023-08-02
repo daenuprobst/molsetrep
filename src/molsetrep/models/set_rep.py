@@ -25,6 +25,9 @@ class SetRep(Module):
         self.fc1 = Linear(self.n_hidden_sets, self.n_out_channels)
         self.relu = LeakyReLU()
 
+        # Init weights
+        self.Wc.data.normal_()
+
     def forward(self, X):
         t = self.relu(torch.matmul(X, self.Wc))
         t = t.view(t.size()[0], t.size()[1], self.n_elements, self.n_hidden_sets)

@@ -152,7 +152,7 @@ class TripleSetEncoder(Encoder):
                 fp_bond.append(bond_invariants)
 
             if len(fp_bond) == 0:
-                fp_bond.append([0] * (4 + 202 + 12 + 7 + 8))
+                fp_bond.append([0] * (5 + 202 + 12 + 7 + 8))
 
             fp_global = []
 

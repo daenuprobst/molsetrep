@@ -21,5 +21,17 @@ from molsetrep.models.sr import (
     LightningSRClassifier,
     LightningSRRegressor,
 )
-from molsetrep.models.dual_sr import DualSRClassifier, DualSRRegressor
-from molsetrep.models.triple_sr import TripleSRClassifier, TripleSRRegressor
+
+from molsetrep.models.dual_sr import (
+    DualSRClassifier,
+    DualSRRegressor,
+    LightningDualSRClassifier,
+    LightningDualSRRegressor,
+)
+
+from molsetrep.models.triple_sr import (
+    TripleSRClassifier,
+    TripleSRRegressor,
+    LightningTripleSRClassifier,
+    LightningTripleSRRegressor,
+)

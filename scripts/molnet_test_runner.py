@@ -21,19 +21,19 @@ from molsetrep.encoders import (
     TripleSetEncoder,
 )
 from molsetrep.models import (
-    SRClassifier,
-    SRRegressor,
     LightningSRClassifier,
     LightningSRRegressor,
-    DualSRClassifier,
-    DualSRRegressor,
-    TripleSRClassifier,
-    TripleSRRegressor,
+    LightningDualSRClassifier,
+    LightningDualSRRegressor,
+    LightningTripleSRClassifier,
+    LightningTripleSRRegressor,
 )
 
 from rdkit import RDLogger
 
 RDLogger.DisableLog("rdApp.*")
+
+app = typer.Typer(pretty_exceptions_enable=False)
 
 
 def get_encoder(
@@ -52,9 +52,9 @@ def get_encoder(
 def get_model(
     model_name: str,
     task_type: str,
-    n_hidden_sets: int,
-    n_elements: int,
-    d: int,
+    n_hidden_sets: List[int],
+    n_elements: List[int],
+    d: List[int],
     n_classes: int,
     n_hidden_channels: Optional[List[int]] = None,
     class_weights: Optional[List[float]] = None,
@@ -81,18 +81,38 @@ def get_model(
             )
     elif model_name == "msr2":
         if task_type == "classification":
-            return DualSRClassifier(**kwargs)
+            return LightningDualSRClassifier(
+                n_hidden_sets,
+                n_elements,
+                d,
+                n_classes,
+                n_hidden_channels,
+                class_weights,
+                **kwargs,
+            )
         elif task_type == "regression":
-            return DualSRRegressor(**kwargs)
+            return LightningDualSRRegressor(
+                n_hidden_sets, n_elements, d, n_hidden_channels, **kwargs
+            )
         else:
             raise ValueError(
                 f"No task type '{task_type}' for model named '{model_name}' available."
             )
     elif model_name == "msr3":
         if task_type == "classification":
-            return TripleSRClassifier(**kwargs)
+            return LightningTripleSRClassifier(
+                n_hidden_sets,
+                n_elements,
+                d,
+                n_classes,
+                n_hidden_channels,
+                class_weights,
+                **kwargs,
+            )
         elif task_type == "regression":
-            return TripleSRRegressor(**kwargs)
+            return LightningTripleSRRegressor(
+                n_hidden_sets, n_elements, d, n_hidden_channels, **kwargs
+            )
         else:
             raise ValueError(
                 f"No task type '{task_type}' for model named '{model_name}' available."
@@ -101,6 +121,7 @@ def get_model(
         raise ValueError(f"No model named '{model_name}' available.")
 
 
+@app.command()
 def main(
     data_set_name: str,
     model_name: str,
@@ -110,6 +131,8 @@ def main(
     batch_size: int = 64,
     splitter: str = "random",
     task_type: str = "regression",
+    n_hidden_sets: Optional[List[int]] = None,
+    n_elements: Optional[List[int]] = None,
 ):
     tasks = molnet_task_loader(data_set_name)
 
@@ -164,23 +187,45 @@ def main(
 
         d = [len(train_dataset[0][i][0]) for i in range(len(train_dataset[0]) - 1)]
 
+        if n_hidden_sets is None or len(n_hidden_sets) == 0:
+            n_hidden_sets = [8] * len(d)
+
+        if n_elements is None or len(n_elements) == 0:
+            n_elements = [8] * len(d)
+
         model = get_model(
-            model_name, task_type, 8, 8, d[0], 2, class_weights=class_weights
+            model_name,
+            task_type,
+            list(n_hidden_sets),
+            list(n_elements),
+            d,
+            2,
+            class_weights=class_weights,
         )
 
         checkpoint_callback = ModelCheckpoint(monitor="val/auroc", mode="max")
         if task_type == "regression":
             checkpoint_callback = ModelCheckpoint(monitor="val/rmse", mode="min")
 
+        wandb_logger = wandb.WandbLogger(project=f"MSR_{data_set_name}_{splitter}")
+        wandb_logger.experiment.config.update(
+            {"model": model_name, "task": tasks[task_idx]}
+        )
+        wandb_logger.watch(model, log="all")
+
         trainer = pl.Trainer(
             callbacks=[checkpoint_callback],
             max_epochs=max_epochs,
             log_every_n_steps=1,
+            logger=wandb_logger,
         )
 
         trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         trainer.test(ckpt_path="best", dataloaders=test_loader)
 
+        wandb_logger.finalize("success")
+        wandb_finish()
+
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()

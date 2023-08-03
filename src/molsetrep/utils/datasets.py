@@ -20,7 +20,7 @@ def molnet_loader(name: str, **kwargs):
 
     tasks, dataset, transformers = dc_set
     train, valid, test = dataset
-    return train, valid, test, tasks
+    return train, valid, test, tasks, transformers
 
 
 def get_class_weights(y, task_idx):

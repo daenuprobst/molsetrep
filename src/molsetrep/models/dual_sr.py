@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import torch
 from torch.nn import Module, CrossEntropyLoss
@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 import lightning.pytorch as pl
 
-from torchmetrics.classification import Accuracy, AUROC
+from torchmetrics.classification import Accuracy, AUROC, AveragePrecision
 from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
 
 from molsetrep.models.set_rep import SetRep
@@ -103,10 +103,13 @@ class LightningDualSRClassifier(pl.LightningModule):
         # Metrics
         self.train_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.train_auroc = AUROC(task="multiclass", num_classes=n_classes)
+        self.train_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.val_auroc = AUROC(task="multiclass", num_classes=n_classes)
+        self.val_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
         self.test_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.test_auroc = AUROC(task="multiclass", num_classes=n_classes)
+        self.test_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
 
     def forward(self, x0, x1):
         return self.sr_classifier(x0, x1)
@@ -120,10 +123,12 @@ class LightningDualSRClassifier(pl.LightningModule):
         # Metrics
         self.train_accuracy(out, y)
         self.train_auroc(out, y)
+        self.train_ap(out, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True)
         self.log("train/acc", self.train_accuracy, on_step=False, on_epoch=True)
         self.log("train/auroc", self.train_auroc, on_step=False, on_epoch=True)
+        self.log("train/ap", self.train_ap, on_step=False, on_epoch=True)
 
         return loss
 
@@ -136,10 +141,12 @@ class LightningDualSRClassifier(pl.LightningModule):
         # Metrics
         self.val_accuracy(out, y)
         self.val_auroc(out, y)
+        self.val_ap(out, y)
 
         self.log("val/loss", loss, on_step=False, on_epoch=True)
         self.log("val/acc", self.val_accuracy, on_step=False, on_epoch=True)
         self.log("val/auroc", self.val_auroc, on_step=False, on_epoch=True)
+        self.log("val/ap", self.val_ap, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
         x0, x1, y = test_batch
@@ -150,10 +157,12 @@ class LightningDualSRClassifier(pl.LightningModule):
         # Metrics
         self.test_accuracy(out, y)
         self.test_auroc(out, y)
+        self.test_ap(out, y)
 
         self.log("test/loss", loss, on_step=False, on_epoch=True)
         self.log("test/acc", self.test_accuracy)
         self.log("test/auroc", self.test_auroc)
+        self.log("test/ap", self.test_ap)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -167,11 +176,13 @@ class LightningDualSRRegressor(pl.LightningModule):
         d: List[int],
         n_hidden_channels: Optional[List] = None,
         learning_rate: float = 0.001,
+        scaler: Optional[any] = None,
     ) -> None:
         super(LightningDualSRRegressor, self).__init__()
         self.save_hyperparameters()
 
         self.learning_rate = learning_rate
+        self.scaler = scaler
 
         self.sr_regressor = DualSRRegressor(
             n_hidden_sets, n_elements, d, n_hidden_channels
@@ -197,6 +208,16 @@ class LightningDualSRRegressor(pl.LightningModule):
         out = self(x0, x1)
         loss = F.mse_loss(out, y)
 
+        if self.scaler:
+            out = torch.FloatTensor(
+                self.scaler.inverse_transform(
+                    out.detach().cpu().reshape(-1, 1)
+                ).flatten()
+            )
+            y = torch.FloatTensor(
+                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+            )
+
         # Metrics
         self.train_r2(out, y)
         self.train_rmse(out, y)
@@ -215,6 +236,16 @@ class LightningDualSRRegressor(pl.LightningModule):
         out = self(x0, x1)
         loss = F.mse_loss(out, y)
 
+        if self.scaler:
+            out = torch.FloatTensor(
+                self.scaler.inverse_transform(
+                    out.detach().cpu().reshape(-1, 1)
+                ).flatten()
+            )
+            y = torch.FloatTensor(
+                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+            )
+
         # Metrics
         self.val_r2(out, y)
         self.val_rmse(out, y)
@@ -230,6 +261,16 @@ class LightningDualSRRegressor(pl.LightningModule):
 
         out = self(x0, x1)
         loss = F.mse_loss(out, y)
+
+        if self.scaler:
+            out = torch.FloatTensor(
+                self.scaler.inverse_transform(
+                    out.detach().cpu().reshape(-1, 1)
+                ).flatten()
+            )
+            y = torch.FloatTensor(
+                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+            )
 
         # Metrics
         self.test_r2(out, y)

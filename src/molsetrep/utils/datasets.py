@@ -23,13 +23,19 @@ def molnet_loader(name: str, **kwargs):
     return train, valid, test, tasks, transformers
 
 
-def get_class_weights(y, task_idx):
-    y_t = y.T
+def get_class_weights(y, task_idx=None):
+    if task_idx is None:
+        _, counts = np.unique(y, return_counts=True)
+        weights = [1 - c / y.shape[0] for c in counts]
 
-    _, counts = np.unique(y_t[task_idx], return_counts=True)
-    weights = [1 - c / y_t[task_idx].shape[0] for c in counts]
+        return np.array(weights), np.array(counts)
+    else:
+        y_t = y.T
 
-    return np.array(weights), np.array(counts)
+        _, counts = np.unique(y_t[task_idx], return_counts=True)
+        weights = [1 - c / y_t[task_idx].shape[0] for c in counts]
+
+        return np.array(weights), np.array(counts)
 
 
 def molnet_encoded_loader(

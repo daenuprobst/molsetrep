@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 import lightning.pytorch as pl
 
-from torchmetrics.classification import Accuracy, AUROC, AveragePrecision
+from torchmetrics.classification import Accuracy, AUROC, AveragePrecision, F1Score
 from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
 
 from molsetrep.models import SetRep, SetTransformer, DeepSet, MLP
@@ -20,13 +20,22 @@ class SRClassifier(Module):
         d: int,
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
+        set_layer: str = "setrep",
     ) -> None:
         super(SRClassifier, self).__init__()
 
         if n_hidden_channels is None:
             n_hidden_channels = [32, 16]
 
-        self.set_rep = SetRep(n_hidden_sets, n_elements, d, n_hidden_channels[0])
+        if set_layer == "setrep":
+            self.set_rep = SetRep(n_hidden_sets, n_elements, d, n_hidden_channels[0])
+        elif set_layer == "transformer":
+            ...
+        elif set_layer == "deepset":
+            ...
+        else:
+            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+
         self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], n_classes)
 
     def forward(self, x):
@@ -41,13 +50,22 @@ class SRRegressor(Module):
         n_elements: int,
         d: int,
         n_hidden_channels: Optional[List] = None,
+        set_layer: str = "setrep",
     ) -> None:
         super(SRRegressor, self).__init__()
 
         if n_hidden_channels is None:
             n_hidden_channels = [32, 16]
 
-        self.set_rep = SetRep(n_hidden_sets, n_elements, d, n_hidden_channels[0])
+        if set_layer == "setrep":
+            self.set_rep = SetRep(n_hidden_sets, n_elements, d, n_hidden_channels[0])
+        elif set_layer == "transformer":
+            ...
+        elif set_layer == "deepset":
+            ...
+        else:
+            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+
         self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], 1)
 
     def forward(self, x):
@@ -65,6 +83,7 @@ class LightningSRClassifier(pl.LightningModule):
         n_hidden_channels: Optional[List] = None,
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
+        set_layer: str = "setrep",
     ) -> None:
         super(LightningSRClassifier, self).__init__()
         self.save_hyperparameters()
@@ -73,7 +92,12 @@ class LightningSRClassifier(pl.LightningModule):
         self.learning_rate = learning_rate
 
         self.sr_classifier = SRClassifier(
-            n_hidden_sets[0], n_elements[0], d[0], n_classes, n_hidden_channels
+            n_hidden_sets[0],
+            n_elements[0],
+            d[0],
+            n_classes,
+            n_hidden_channels,
+            set_layer,
         )
 
         # Criterions
@@ -88,19 +112,16 @@ class LightningSRClassifier(pl.LightningModule):
         # Metrics
         self.train_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.train_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.train_ap = AveragePrecision(
-            task="multiclass", num_classes=n_classes, average=None
-        )
+        self.train_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
+        self.train_f1 = F1Score(task="multiclass", num_classes=n_classes)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.val_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.val_ap = AveragePrecision(
-            task="multiclass", num_classes=n_classes, average=None
-        )
+        self.val_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
+        self.val_f1 = F1Score(task="multiclass", num_classes=n_classes)
         self.test_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.test_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.test_ap = AveragePrecision(
-            task="multiclass", num_classes=n_classes, average=None
-        )
+        self.test_ap = AveragePrecision(task="multiclass", num_classes=n_classes)
+        self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
 
     def forward(self, x):
         return self.sr_classifier(x)
@@ -115,11 +136,13 @@ class LightningSRClassifier(pl.LightningModule):
         self.train_accuracy(out, y)
         self.train_auroc(out, y)
         self.train_ap(out, y)
+        self.train_f1(out, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True)
         self.log("train/acc", self.train_accuracy, on_step=False, on_epoch=True)
         self.log("train/auroc", self.train_auroc, on_step=False, on_epoch=True)
         self.log("train/ap", self.train_ap, on_step=False, on_epoch=True)
+        self.log("train/f1", self.train_f1, on_step=False, on_epoch=True)
 
         return loss
 
@@ -133,11 +156,13 @@ class LightningSRClassifier(pl.LightningModule):
         self.val_accuracy(out, y)
         self.val_auroc(out, y)
         self.val_ap(out, y)
+        self.val_f1(out, y)
 
         self.log("val/loss", loss, on_step=False, on_epoch=True)
         self.log("val/acc", self.val_accuracy, on_step=False, on_epoch=True)
         self.log("val/auroc", self.val_auroc, on_step=False, on_epoch=True)
         self.log("val/ap", self.val_ap, on_step=False, on_epoch=True)
+        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
         x, y = test_batch
@@ -149,11 +174,13 @@ class LightningSRClassifier(pl.LightningModule):
         self.test_accuracy(out, y)
         self.test_auroc(out, y)
         self.test_ap(out, y)
+        self.test_f1(out, y)
 
         self.log("test/loss", loss, on_step=False, on_epoch=True)
         self.log("test/acc", self.test_accuracy)
         self.log("test/auroc", self.test_auroc)
         self.log("test/ap", self.test_ap)
+        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -168,6 +195,7 @@ class LightningSRRegressor(pl.LightningModule):
         n_hidden_channels: Optional[List] = None,
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
+        set_layer: str = "setrep",
     ) -> None:
         super(LightningSRRegressor, self).__init__()
         self.save_hyperparameters()
@@ -176,7 +204,7 @@ class LightningSRRegressor(pl.LightningModule):
         self.scaler = scaler
 
         self.sr_regressor = SRRegressor(
-            n_hidden_sets[0], n_elements[0], d[0], n_hidden_channels
+            n_hidden_sets[0], n_elements[0], d[0], n_hidden_channels, set_layer
         )
 
         # Metrics

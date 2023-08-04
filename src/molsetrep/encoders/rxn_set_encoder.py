@@ -19,6 +19,8 @@ from rdkit.Chem import (
     GetPeriodicTable,
 )
 
+from rdkit.Chem.AllChem import GetMorganGenerator
+
 PT = GetPeriodicTable()
 
 from sklearn.preprocessing import StandardScaler
@@ -64,127 +66,24 @@ class RXNSetEncoder(Encoder):
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fps_a_r = []
-        fps_a_p = []
-        # fps_b = []
+        fpgen = GetMorganGenerator(radius=2, fpSize=1024)
+
+        fps_r = []
+        fps_p = []
 
         for smi in rxn_smiles:
             reactants, products = get_mols(smi)
 
-            fp_atomic_r = []
-            fp_atomic_p = []
+            fp_ecfp_r = []
+            fp_ecfp_p = []
 
             for mol in reactants:
-                ComputeGasteigerCharges(mol)
-
-                for atom in mol.GetAtoms():
-                    atomic_invariants = []
-                    atomic_invariants += one_hot_encode(atom.GetDegree(), 5)
-                    atomic_invariants += one_hot_encode(
-                        atom.GetExplicitValence()
-                        + atom.GetImplicitValence()
-                        - atom.GetNumExplicitHs()
-                        - atom.GetNumImplicitHs(),
-                        6,
-                    )
-                    atomic_invariants += one_hot_encode(atom.GetAtomicNum(), 100)
-                    atomic_invariants += one_hot_encode(
-                        atom.GetFormalCharge(), [-2, -1, 0, 1, 2]
-                    )
-                    atomic_invariants += one_hot_encode(
-                        atom.GetChiralTag(),
-                        [
-                            HybridizationType.SP,
-                            HybridizationType.SP2,
-                            HybridizationType.SP3,
-                            HybridizationType.SP3D,
-                            HybridizationType.SP3D2,
-                        ],
-                    )
-                    atomic_invariants += one_hot_encode(atom.GetChiralTag(), 4)
-                    atomic_invariants.append(atom.GetMass())
-                    atomic_invariants.append(int(atom.IsInRing() == True))
-                    atomic_invariants.append(float(atom.GetProp("_GasteigerCharge")))
-                    # atomic_invariants.append(PT.GetRvdw(atom.GetAtomicNum()))
-
-                    total_hs = atom.GetNumExplicitHs() + atom.GetNumImplicitHs()
-                    atomic_invariants += one_hot_encode(total_hs, 6)
-
-                    fp_atomic_r.append(atomic_invariants)
+                fp_ecfp_r.append(fpgen.GetFingerprint(mol))
 
             for mol in products:
-                ComputeGasteigerCharges(mol)
+                fp_ecfp_p.append(fpgen.GetFingerprint(mol))
 
-                for atom in mol.GetAtoms():
-                    atomic_invariants = []
-                    atomic_invariants += one_hot_encode(atom.GetDegree(), 5)
-                    atomic_invariants += one_hot_encode(
-                        atom.GetExplicitValence()
-                        + atom.GetImplicitValence()
-                        - atom.GetNumExplicitHs()
-                        - atom.GetNumImplicitHs(),
-                        6,
-                    )
-                    atomic_invariants += one_hot_encode(atom.GetAtomicNum(), 100)
-                    atomic_invariants += one_hot_encode(
-                        atom.GetFormalCharge(), [-2, -1, 0, 1, 2]
-                    )
-                    atomic_invariants += one_hot_encode(
-                        atom.GetChiralTag(),
-                        [
-                            HybridizationType.SP,
-                            HybridizationType.SP2,
-                            HybridizationType.SP3,
-                            HybridizationType.SP3D,
-                            HybridizationType.SP3D2,
-                        ],
-                    )
-                    atomic_invariants += one_hot_encode(atom.GetChiralTag(), 4)
-                    atomic_invariants.append(atom.GetMass())
-                    atomic_invariants.append(int(atom.IsInRing() == True))
-                    atomic_invariants.append(float(atom.GetProp("_GasteigerCharge")))
-                    # atomic_invariants.append(PT.GetRvdw(atom.GetAtomicNum()))
+            fps_r.append(fp_ecfp_r)
+            fps_p.append(fp_ecfp_p)
 
-                    total_hs = atom.GetNumExplicitHs() + atom.GetNumImplicitHs()
-                    atomic_invariants += one_hot_encode(total_hs, 6)
-
-                    fp_atomic_p.append(atomic_invariants)
-
-            # fp_bond = []
-            # for bond in mol.GetBonds():
-            #     atom_a = bond.GetBeginAtom()
-            #     atom_b = bond.GetEndAtom()
-
-            #     bond_type = bond.GetBondType()
-            #     bond_invariants = [
-            #         bond_type == BondType.SINGLE,
-            #         bond_type == BondType.DOUBLE,
-            #         bond_type == BondType.TRIPLE,
-            #         bond_type == BondType.AROMATIC,
-            #     ]
-            #     bond_invariants += one_hot_encode(int(bond.GetStereo()), 6)
-            #     bond_invariants.append(int(bond.GetIsAromatic() == True))
-            #     bond_invariants.append(int(bond.GetIsConjugated() == True))
-            #     bond_invariants.append(bond.GetValenceContrib(atom_a))
-            #     bond_invariants.append(bond.GetValenceContrib(atom_b))
-
-            #     bond_invariants += one_hot_encode(atom_a.GetAtomicNum(), 100)
-            #     bond_invariants += one_hot_encode(atom_b.GetAtomicNum(), 100)
-            #     bond_invariants += one_hot_encode(atom_a.GetDegree(), 5)
-            #     bond_invariants += one_hot_encode(atom_b.GetDegree(), 5)
-            #     bond_invariants.append(int(atom_a.IsInRing() == True))
-            #     bond_invariants.append(int(atom_b.IsInRing() == True))
-
-            #     bond_invariants.append(float(atom_a.GetProp("_GasteigerCharge")))
-            #     bond_invariants.append(float(atom_b.GetProp("_GasteigerCharge")))
-
-            #     fp_bond.append(bond_invariants)
-
-            # if len(fp_bond) == 0:
-            #     fp_bond.append([0] * (4 + 202 + 12 + 7 + 8))
-
-            fps_a_r.append(fp_atomic_r)
-            fps_a_p.append(fp_atomic_p)
-            # fps_b.append(fp_bond)
-
-        return super().to_multi_tensor_dataset([fps_a_r, fps_a_p], labels, label_dtype)
+        return super().to_multi_tensor_dataset([fps_r, fps_p], labels, label_dtype)

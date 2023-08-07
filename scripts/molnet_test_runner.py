@@ -24,6 +24,7 @@ from molsetrep.encoders import (
     SingleSetEncoder,
     DualSetEncoder,
     TripleSetEncoder,
+    LigandProtEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -43,8 +44,10 @@ RDLogger.DisableLog("rdApp.*")
 app = typer.Typer(pretty_exceptions_enable=False)
 
 
-def get_encoder(model_name: str, charges: bool = True) -> Encoder:
-    if model_name == "msr1":
+def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
+    if data_set_name == "pdbbind":
+        return LigandProtEncoder()
+    elif model_name == "msr1":
         return SingleSetEncoder()
     elif model_name == "msr2":
         return DualSetEncoder(charges=charges)
@@ -174,17 +177,19 @@ def main(
     set_layer: str = "setrep",
     charges: bool = True,
 ):
-    tasks = molnet_task_loader(data_set_name)
+    featurizer = None
+    set_name = None
+    if data_set_name == "pdbbind":
+        featurizer = PDBBindFeaturizer()
+        set_name = "refined"
+
+    tasks = molnet_task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
 
     print(f'\nDataset "{data_set_name}" contains {len(tasks)} task(s).')
 
     label_dtype = torch.long
     if task_type == "regression":
         label_dtype = torch.float
-
-    featurizer = None
-    if data_set_name == "pdbbind":
-        featurizer = PDBBindFeaturizer()
 
     for task_idx in range(len(tasks)):
         for _ in range(n):
@@ -193,7 +198,8 @@ def main(
                 splitter=splitter,
                 reload=False,
                 transformers=[],
-                # featurizer=featurizer,
+                featurizer=featurizer,
+                set_name=set_name,
             )
 
             class_weights = None
@@ -201,40 +207,42 @@ def main(
                 class_weights, _ = get_class_weights(train.y, task_idx)
 
             scaler = None
-            train_y = np.array(train.y[:, task_idx])
-            valid_y = np.array(valid.y[:, task_idx])
-            test_y = np.array(test.y[:, task_idx])
+
+            train_y = train.y
+            valid_y = valid.y
+            test_y = test.y
+
+            if len(train_y.shape) == 1:
+                train_y = np.expand_dims(train_y, -1)
+                valid_y = np.expand_dims(valid_y, -1)
+                test_y = np.expand_dims(test_y, -1)
+
+            train_y = np.array(train_y[:, task_idx])
+            valid_y = np.array(valid_y[:, task_idx])
+            test_y = np.array(test_y[:, task_idx])
 
             if task_type == "regression":
                 scaler = StandardScaler()
-                scaler.fit(
-                    np.concatenate(
-                        (
-                            train.y[:, task_idx],
-                            valid.y[:, task_idx],
-                            test.y[:, task_idx],
-                        )
-                    ).reshape(-1, 1)
-                )
+                scaler.fit(np.concatenate((train_y, valid_y, test_y)).reshape(-1, 1))
 
                 train_y = scaler.transform(train_y.reshape(-1, 1)).flatten()
                 valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
                 test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
 
-            enc = get_encoder(model_name, charges)
+            enc = get_encoder(model_name, data_set_name, charges)
 
             train_dataset = enc.encode(
-                train.ids,
+                train.X if data_set_name == "pdbbind" else train.ids,
                 train_y,
                 label_dtype=label_dtype,
             )
             valid_dataset = enc.encode(
-                valid.ids,
+                valid.X if data_set_name == "pdbbind" else valid.ids,
                 valid_y,
                 label_dtype=label_dtype,
             )
             test_dataset = enc.encode(
-                test.ids,
+                test.X if data_set_name == "pdbbind" else test.ids,
                 test_y,
                 label_dtype=label_dtype,
             )

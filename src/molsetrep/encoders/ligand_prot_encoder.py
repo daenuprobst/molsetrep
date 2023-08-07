@@ -23,8 +23,7 @@ class LigandProtEncoder(Encoder):
 
     def encode(
         self,
-        ligand_mols: Iterable[Any],
-        prot_mols: Iterable[Any],
+        mols: Iterable[Any],
         labels: Iterable[Any],
         label_dtype: Optional[torch.dtype] = None,
     ) -> TensorDataset:
@@ -32,22 +31,24 @@ class LigandProtEncoder(Encoder):
 
         fps_ligand = []
         fps_prot = []
-        for mol in ligand_mols:
+
+        for ligand_mol, prot_mol in mols:
+            # Handle ligand
             if self.charges:
-                ComputeGasteigerCharges(mol)
+                ComputeGasteigerCharges(ligand_mol)
 
             fp_ligand_atoms = []
-            for atom in mol.GetAtoms():
+            for atom in ligand_mol.GetAtoms():
                 fp_ligand_atoms.append(get_atomic_invariants(atom, False))
 
             fps_ligand.append(fp_ligand_atoms)
 
-        for mol in prot_mols:
+            # handle protein
             if self.charges:
-                ComputeGasteigerCharges(mol)
+                ComputeGasteigerCharges(prot_mol)
 
             fp_prot_atoms = []
-            for atom in mol.GetAtoms():
+            for atom in prot_mol.GetAtoms():
                 fp_prot_atoms.append(get_atomic_invariants(atom, False))
 
             fps_prot.append(fp_prot_atoms)

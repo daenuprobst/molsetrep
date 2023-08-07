@@ -6,17 +6,24 @@ import deepchem.molnet as mn
 from molsetrep.encoders import Encoder
 
 
-def molnet_task_loader(name: str, **kwargs):
+def molnet_task_loader(name: str, featurizer=None, **kwargs):
     mn_loader = getattr(mn, f"load_{name}")
-    dc_set = mn_loader(**kwargs)
+
+    if featurizer:
+        dc_set = mn_loader(featurizer=featurizer, **kwargs)
+    else:
+        dc_set = mn_loader(**kwargs)
 
     tasks, _, _ = dc_set
     return tasks
 
 
-def molnet_loader(name: str, **kwargs):
+def molnet_loader(name: str, featurizer=None, **kwargs):
     mn_loader = getattr(mn, f"load_{name}")
-    dc_set = mn_loader(**kwargs)
+    if featurizer:
+        dc_set = mn_loader(featurizer=featurizer, **kwargs)
+    else:
+        dc_set = mn_loader(**kwargs)
 
     tasks, dataset, transformers = dc_set
     train, valid, test = dataset

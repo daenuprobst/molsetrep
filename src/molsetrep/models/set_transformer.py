@@ -98,6 +98,9 @@ class DeepSet(nn.Module):
         X = self.dec(X).reshape(-1, self.num_outputs, self.dim_output)
         X = torch.squeeze(X)
         X = torch.nn.functional.log_softmax(X, dim=1)
+        X = torch.reshape(
+            X, (X.size(dim=0), self.num_outputs * self.dim_output)
+        )  # reshape to (batch size. hidden_sets * n_classes)
         return X
 
 
@@ -112,6 +115,8 @@ class SetTransformer(nn.Module):
         num_heads=4,
         ln=False,
     ):
+        self.num_outputs = num_outputs
+        self.dim_output = dim_output
         super(SetTransformer, self).__init__()
         self.enc = nn.Sequential(
             ISAB(dim_input, dim_hidden, num_heads, num_inds, ln=ln),
@@ -125,4 +130,6 @@ class SetTransformer(nn.Module):
         )
 
     def forward(self, X):
-        return self.dec(self.enc(X))
+        X = self.dec(self.enc(X))
+        X = torch.reshape(X, (X.size(dim=0), self.num_outputs * self.dim_output))
+        return X

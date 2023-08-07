@@ -34,6 +34,8 @@ from molsetrep.models import (
     LightningTripleSRRegressor,
 )
 
+from molsetrep.data import PDBBindFeaturizer
+
 from rdkit import RDLogger
 
 RDLogger.DisableLog("rdApp.*")
@@ -41,13 +43,11 @@ RDLogger.DisableLog("rdApp.*")
 app = typer.Typer(pretty_exceptions_enable=False)
 
 
-def get_encoder(
-    model_name: str,
-) -> Encoder:
+def get_encoder(model_name: str, charges: bool = True) -> Encoder:
     if model_name == "msr1":
         return SingleSetEncoder()
     elif model_name == "msr2":
-        return DualSetEncoder()
+        return DualSetEncoder(charges=charges)
     elif model_name == "msr3":
         return TripleSetEncoder()
     else:
@@ -64,6 +64,8 @@ def get_model(
     n_hidden_channels: Optional[List[int]] = None,
     class_weights: Optional[List[float]] = None,
     scaler: Optional[any] = None,
+    set_layer: str = "setrep",
+    learning_rate: float = 0.001,
     **kwargs,
 ) -> torch.nn.Module:
     if model_name == "msr1":
@@ -75,6 +77,8 @@ def get_model(
                 n_classes,
                 n_hidden_channels,
                 class_weights,
+                learning_rate,
+                set_layer,
                 **kwargs,
             )
         elif task_type == "regression":
@@ -83,6 +87,8 @@ def get_model(
                 n_elements,
                 d,
                 n_hidden_channels,
+                learning_rate=learning_rate,
+                set_layer=set_layer,
                 scaler=scaler,
                 **kwargs,
             )
@@ -99,6 +105,8 @@ def get_model(
                 n_classes,
                 n_hidden_channels,
                 class_weights,
+                learning_rate,
+                set_layer,
                 **kwargs,
             )
         elif task_type == "regression":
@@ -107,7 +115,9 @@ def get_model(
                 n_elements,
                 d,
                 n_hidden_channels,
+                learning_rate=learning_rate,
                 scaler=scaler,
+                set_layer=set_layer,
                 **kwargs,
             )
         else:
@@ -123,6 +133,8 @@ def get_model(
                 n_classes,
                 n_hidden_channels,
                 class_weights,
+                learning_rate,
+                set_layer,
                 **kwargs,
             )
         elif task_type == "regression":
@@ -131,7 +143,9 @@ def get_model(
                 n_elements,
                 d,
                 n_hidden_channels,
+                learning_rate=learning_rate,
                 scaler=scaler,
+                set_layer=set_layer,
                 **kwargs,
             )
         else:
@@ -154,8 +168,11 @@ def main(
     task_type: str = "regression",
     n_hidden_sets: Optional[List[int]] = None,
     n_elements: Optional[List[int]] = None,
+    n_hidden_channels: Optional[List[int]] = None,
     learning_rate: float = 0.001,
     monitor: Optional[str] = None,
+    set_layer: str = "setrep",
+    charges: bool = True,
 ):
     tasks = molnet_task_loader(data_set_name)
 
@@ -165,10 +182,18 @@ def main(
     if task_type == "regression":
         label_dtype = torch.float
 
+    featurizer = None
+    if data_set_name == "pdbbind":
+        featurizer = PDBBindFeaturizer()
+
     for task_idx in range(len(tasks)):
         for _ in range(n):
             train, valid, test, _, transforms = molnet_loader(
-                data_set_name, splitter=splitter, reload=False, transformers=[]
+                data_set_name,
+                splitter=splitter,
+                reload=False,
+                transformers=[],
+                # featurizer=featurizer,
             )
 
             class_weights = None
@@ -196,7 +221,7 @@ def main(
                 valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
                 test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
 
-            enc = get_encoder(model_name)
+            enc = get_encoder(model_name, charges)
 
             train_dataset = enc.encode(
                 train.ids,
@@ -254,6 +279,8 @@ def main(
                 class_weights=class_weights,
                 learning_rate=learning_rate,
                 scaler=scaler,
+                n_hidden_channels=n_hidden_channels,
+                set_layer=set_layer,
             )
 
             if monitor is None:

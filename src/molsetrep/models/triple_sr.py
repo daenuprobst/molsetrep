@@ -9,8 +9,7 @@ import lightning.pytorch as pl
 from torchmetrics.classification import Accuracy, AUROC, AveragePrecision, F1Score
 from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
 
-from molsetrep.models.set_rep import SetRep
-from molsetrep.models.mlp import MLP
+from molsetrep.models import SetRep, SetTransformer, DeepSet, MLP
 
 
 class TripleSRClassifier(Module):
@@ -25,7 +24,7 @@ class TripleSRClassifier(Module):
     ) -> None:
         super(TripleSRClassifier, self).__init__()
 
-        if n_hidden_channels is None:
+        if n_hidden_channels is None or len(n_hidden_channels) < 2:
             n_hidden_channels = [32, 16]
 
         if set_layer == "setrep":
@@ -39,9 +38,13 @@ class TripleSRClassifier(Module):
                 n_hidden_sets[2], n_elements[2], d[2], n_hidden_channels[0]
             )
         elif set_layer == "transformer":
-            ...
+            self.set_rep_0 = SetTransformer(d[0], n_hidden_channels[0], 1)
+            self.set_rep_1 = SetTransformer(d[1], n_hidden_channels[0], 1)
+            self.set_rep_2 = SetTransformer(d[2], n_hidden_channels[0], 1)
         elif set_layer == "deepset":
-            ...
+            self.set_rep_0 = DeepSet(d[0], n_hidden_channels[0], 1)
+            self.set_rep_1 = DeepSet(d[1], n_hidden_channels[0], 1)
+            self.set_rep_2 = DeepSet(d[2], n_hidden_channels[0], 1)
         else:
             raise ValueError(f"Set layer '{set_layer}' not implemented.")
 
@@ -65,7 +68,7 @@ class TripleSRRegressor(Module):
     ) -> None:
         super(TripleSRRegressor, self).__init__()
 
-        if n_hidden_channels is None:
+        if n_hidden_channels is None or len(n_hidden_channels) < 2:
             n_hidden_channels = [32, 16]
 
         if set_layer == "setrep":
@@ -79,9 +82,13 @@ class TripleSRRegressor(Module):
                 n_hidden_sets[2], n_elements[2], d[2], n_hidden_channels[0]
             )
         elif set_layer == "transformer":
-            ...
+            self.set_rep_0 = SetTransformer(d[0], n_hidden_channels[0], 1)
+            self.set_rep_1 = SetTransformer(d[1], n_hidden_channels[0], 1)
+            self.set_rep_2 = SetTransformer(d[2], n_hidden_channels[0], 1)
         elif set_layer == "deepset":
-            ...
+            self.set_rep_0 = DeepSet(d[0], n_hidden_channels[0], 1)
+            self.set_rep_1 = DeepSet(d[1], n_hidden_channels[0], 1)
+            self.set_rep_2 = DeepSet(d[2], n_hidden_channels[0], 1)
         else:
             raise ValueError(f"Set layer '{set_layer}' not implemented.")
 

@@ -13,8 +13,9 @@ from molsetrep.encoders.common import get_atomic_invariants
 
 
 class SingleSetEncoder(Encoder):
-    def __init__(self) -> Encoder:
+    def __init__(self, charges: bool = True) -> Encoder:
         super().__init__("SingleSetEncoder")
+        self.charges = charges
 
     def encode(
         self,
@@ -27,10 +28,13 @@ class SingleSetEncoder(Encoder):
         fps_a = []
         for smi in smiles:
             mol = MolFromSmiles(smi)
-            ComputeGasteigerCharges(mol)
+
+            if self.charges:
+                ComputeGasteigerCharges(mol)
+
             fp_atomic = []
             for atom in mol.GetAtoms():
-                fp_atomic.append(get_atomic_invariants(atom))
+                fp_atomic.append(get_atomic_invariants(atom, self.charges))
 
             fps_a.append(fp_atomic)
 

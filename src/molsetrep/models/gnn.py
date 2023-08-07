@@ -1,116 +1,132 @@
 from typing import List, Optional, Callable
-
 import torch
-from torch.nn import Module, CrossEntropyLoss
-import torch.nn.functional as F
-
 import lightning.pytorch as pl
 
-from torchmetrics.classification import Accuracy, AUROC, AveragePrecision, F1Score
+
+from torch.nn import Linear, BatchNorm1d, LeakyReLU, Linear, Dropout, CrossEntropyLoss
+import torch.nn.functional as F
+from torch_geometric.nn import GIN
+from torch_geometric.nn.pool import global_mean_pool
+
+from torchmetrics.classification import (
+    Accuracy,
+    AUROC,
+    F1Score,
+)
 from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
 
-from molsetrep.models import SetRep, SetTransformer, DeepSet, MLP
+from molsetrep.models import GINE, MLP
 from molsetrep.metrics import AUPRC
 
 
-class DualSRClassifier(Module):
+class GNNClassifier(torch.nn.Module):
     def __init__(
         self,
-        n_hidden_sets: List[int],
-        n_elements: List[int],
-        d: List[int],
-        n_classes: int,
+        in_channels: int,
+        num_layers: int,
+        in_edge_channels: int,
         n_hidden_channels: Optional[List] = None,
-        set_layer: str = "setrep",
-    ) -> None:
-        super(DualSRClassifier, self).__init__()
+        n_classes: int = 2,
+        gnn: Optional[torch.nn.Module] = None,
+    ):
+        super(GNNClassifier, self).__init__()
 
         if n_hidden_channels is None or len(n_hidden_channels) < 2:
             n_hidden_channels = [32, 16]
 
-        if set_layer == "setrep":
-            self.set_rep_0 = SetRep(
-                n_hidden_sets[0], n_elements[0], d[0], n_hidden_channels[0]
+        self.in_edge_channels = in_edge_channels
+        self.gnn = gnn
+
+        if self.gnn is None:
+            if self.in_edge_channels > 0:
+                self.gnn = GINE(
+                    in_channels,
+                    n_hidden_channels[0],
+                    num_layers,
+                    edge_dim=in_edge_channels,
+                    jk="cat",
+                )
+            else:
+                self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
+
+        self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], n_classes)
+
+    def forward(self, batch):
+        if self.in_edge_channels > 0:
+            out = self.gnn(
+                batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
             )
-            self.set_rep_1 = SetRep(
-                n_hidden_sets[1], n_elements[1], d[1], n_hidden_channels[0]
-            )
-        elif set_layer == "transformer":
-            self.set_rep_0 = SetTransformer(d[0], n_hidden_channels[0], 1)
-            self.set_rep_1 = SetTransformer(d[1], n_hidden_channels[0], 1)
-        elif set_layer == "deepset":
-            self.set_rep_0 = DeepSet(d[0], n_hidden_channels[0], 1)
-            self.set_rep_1 = DeepSet(d[1], n_hidden_channels[0], 1)
         else:
-            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+            out = self.gnn(batch.x.float(), batch.edge_index)
 
-        self.mlp = MLP(n_hidden_channels[0] * 2, n_hidden_channels[1], n_classes)
-
-    def forward(self, x0, x1):
-        x0 = self.set_rep_0(x0)
-        x1 = self.set_rep_1(x1)
-        return self.mlp(torch.cat((x0, x1), 1))
+        t = global_mean_pool(out, batch.batch)
+        out = self.mlp(t)
+        return F.log_softmax(out, dim=1)
 
 
-class DualSRRegressor(Module):
+class GNNRegressor(torch.nn.Module):
     def __init__(
         self,
-        n_hidden_sets: List[int],
-        n_elements: List[int],
-        d: List[int],
+        in_channels,
+        num_layers,
+        in_edge_channels,
         n_hidden_channels: Optional[List] = None,
-        set_layer: str = "setrep",
-    ) -> None:
-        super(DualSRRegressor, self).__init__()
+        gnn: Optional[torch.nn.Module] = None,
+    ):
+        super(GNNRegressor, self).__init__()
 
         if n_hidden_channels is None or len(n_hidden_channels) < 2:
             n_hidden_channels = [32, 16]
 
-        if set_layer == "setrep":
-            self.set_rep_0 = SetRep(
-                n_hidden_sets[0], n_elements[0], d[0], n_hidden_channels[0]
+        self.in_edge_channels = in_edge_channels
+        self.gnn = gnn
+
+        if self.gnn is None:
+            if self.in_edge_channels > 0:
+                self.gnn = GINE(
+                    in_channels,
+                    n_hidden_channels[0],
+                    num_layers,
+                    edge_dim=in_edge_channels,
+                    jk="cat",
+                )
+            else:
+                self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
+
+        self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], 1)
+
+    def forward(self, batch):
+        if self.in_edge_channels > 0:
+            out = self.gnn(
+                batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
             )
-            self.set_rep_1 = SetRep(
-                n_hidden_sets[1], n_elements[1], d[1], n_hidden_channels[0]
-            )
-        elif set_layer == "transformer":
-            self.set_rep_0 = SetTransformer(d[0], n_hidden_channels[0], 1)
-            self.set_rep_1 = SetTransformer(d[1], n_hidden_channels[0], 1)
-        elif set_layer == "deepset":
-            self.set_rep_0 = DeepSet(d[0], n_hidden_channels[0], 1)
-            self.set_rep_1 = DeepSet(d[1], n_hidden_channels[0], 1)
         else:
-            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+            out = self.gnn(batch.x.float(), batch.edge_index)
 
-        self.mlp = MLP(n_hidden_channels[0] * 2, n_hidden_channels[1], 1)
-
-    def forward(self, x0, x1):
-        x0 = self.set_rep_0(x0)
-        x1 = self.set_rep_1(x1)
-
-        return self.mlp(torch.cat((x0, x1), 1)).squeeze(1)
+        t = global_mean_pool(out, batch.batch)
+        out = self.mlp(t)
+        return out.squeeze(1)
 
 
-class LightningDualSRClassifier(pl.LightningModule):
+class LightningGNNClassifier(pl.LightningModule):
     def __init__(
         self,
-        n_hidden_sets: List[int],
-        n_elements: List[int],
-        d: List[int],
+        n_layers: int,
+        n_in_channels: int,
+        n_edge_channels: int,
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
-        set_layer: str = "setrep",
     ) -> None:
-        super(LightningDualSRClassifier, self).__init__()
+        super(LightningGNNClassifier, self).__init__()
         self.save_hyperparameters()
 
         self.class_weights = class_weights
         self.learning_rate = learning_rate
 
-        self.sr_classifier = DualSRClassifier(
-            n_hidden_sets, n_elements, d, n_classes, n_hidden_channels, set_layer
+        self.gnn_classifier = GNNClassifier(
+            n_in_channels, n_layers, n_edge_channels, n_hidden_channels, n_classes
         )
 
         # Criterions
@@ -136,13 +152,13 @@ class LightningDualSRClassifier(pl.LightningModule):
         self.test_auprc = AUPRC(task="multiclass", num_classes=n_classes)
         self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
 
-    def forward(self, x0, x1):
-        return self.sr_classifier(x0, x1)
+    def forward(self, x):
+        return self.gnn_classifier(x)
 
     def training_step(self, batch, batch_idx):
-        x0, x1, y = batch
+        y = batch.y
 
-        out = self(x0, x1)
+        out = self(batch)
         loss = self.criterion(out, y)
 
         # Metrics
@@ -160,9 +176,9 @@ class LightningDualSRClassifier(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x0, x1, y = val_batch
+        y = val_batch.y
 
-        out = self(x0, x1)
+        out = self(val_batch)
         loss = self.criterion_eval(out, y)
 
         # Metrics
@@ -178,9 +194,9 @@ class LightningDualSRClassifier(pl.LightningModule):
         self.log("val/f1", self.val_f1, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
-        x0, x1, y = test_batch
+        y = test_batch.y
 
-        out = self(x0, x1)
+        out = self(test_batch)
         loss = self.criterion_eval(out, y)
 
         # Metrics
@@ -199,25 +215,24 @@ class LightningDualSRClassifier(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class LightningDualSRRegressor(pl.LightningModule):
+class LightningGNNRegressor(pl.LightningModule):
     def __init__(
         self,
-        n_hidden_sets: List[int],
-        n_elements: List[int],
-        d: List[int],
+        n_layers: int,
+        n_in_channels: int,
+        n_edge_channels: int,
         n_hidden_channels: Optional[List] = None,
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
-        set_layer: str = "setrep",
     ) -> None:
-        super(LightningDualSRRegressor, self).__init__()
+        super(LightningGNNRegressor, self).__init__()
         self.save_hyperparameters()
 
         self.learning_rate = learning_rate
         self.scaler = scaler
 
-        self.sr_regressor = DualSRRegressor(
-            n_hidden_sets, n_elements, d, n_hidden_channels, set_layer
+        self.gnn_regressor = GNNRegressor(
+            n_in_channels, n_layers, n_edge_channels, n_hidden_channels
         )
 
         # Metrics
@@ -231,13 +246,13 @@ class LightningDualSRRegressor(pl.LightningModule):
         self.test_rmse = MeanSquaredError(squared=False)
         self.test_mae = MeanAbsoluteError()
 
-    def forward(self, x0, x1):
-        return self.sr_regressor(x0, x1)
+    def forward(self, x):
+        return self.gnn_regressor(x)
 
     def training_step(self, batch, batch_idx):
-        x0, x1, y = batch
+        y = batch.y
 
-        out = self(x0, x1)
+        out = self(batch)
         loss = F.mse_loss(out, y)
 
         if self.scaler:
@@ -263,9 +278,9 @@ class LightningDualSRRegressor(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x0, x1, y = val_batch
+        y = val_batch.y
 
-        out = self(x0, x1)
+        out = self(val_batch)
         loss = F.mse_loss(out, y)
 
         if self.scaler:
@@ -289,9 +304,9 @@ class LightningDualSRRegressor(pl.LightningModule):
         self.log("val/mae", self.val_mae, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
-        x0, x1, y = test_batch
+        y = test_batch.y
 
-        out = self(x0, x1)
+        out = self(test_batch)
         loss = F.mse_loss(out, y)
 
         if self.scaler:

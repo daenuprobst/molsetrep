@@ -25,6 +25,7 @@ from molsetrep.encoders import (
     DualSetEncoder,
     TripleSetEncoder,
     LigandProtEncoder,
+    GraphEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -33,6 +34,10 @@ from molsetrep.models import (
     LightningDualSRRegressor,
     LightningTripleSRClassifier,
     LightningTripleSRRegressor,
+    LightningGNNClassifier,
+    LightningGNNRegressor,
+    LightningSRGNNClassifier,
+    LightningSRGNNRegressor,
 )
 
 from molsetrep.data import PDBBindFeaturizer
@@ -48,11 +53,13 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
     if data_set_name == "pdbbind":
         return LigandProtEncoder()
     elif model_name == "msr1":
-        return SingleSetEncoder()
+        return SingleSetEncoder(charges=charges)
     elif model_name == "msr2":
         return DualSetEncoder(charges=charges)
     elif model_name == "msr3":
-        return TripleSetEncoder()
+        return TripleSetEncoder(charges=charges)
+    elif model_name == "gnn" or "srgnn":
+        return GraphEncoder(charges=charges)
     else:
         raise ValueError(f"No model named '{model_name}' available.")
 
@@ -71,7 +78,59 @@ def get_model(
     learning_rate: float = 0.001,
     **kwargs,
 ) -> torch.nn.Module:
-    if model_name == "msr1":
+    if model_name == "gnn":
+        if task_type == "classification":
+            return LightningGNNClassifier(
+                6,
+                d[0],
+                d[1],
+                n_classes,
+                n_hidden_channels,
+                class_weights,
+                learning_rate,
+                **kwargs,
+            )
+        elif task_type == "regression":
+            return LightningGNNRegressor(
+                6, d[0], d[1], n_hidden_channels, learning_rate, scaler, **kwargs
+            )
+        else:
+            raise ValueError(
+                f"No task type '{task_type}' for model named '{model_name}' available."
+            )
+    elif model_name == "srgnn":
+        if task_type == "classification":
+            return LightningSRGNNClassifier(
+                n_hidden_sets,
+                n_elements,
+                6,
+                d[0],
+                d[1],
+                n_classes,
+                n_hidden_channels,
+                set_layer,
+                class_weights,
+                learning_rate,
+                **kwargs,
+            )
+        elif task_type == "regression":
+            return LightningSRGNNRegressor(
+                n_hidden_sets,
+                n_elements,
+                6,
+                d[0],
+                d[1],
+                n_hidden_channels,
+                set_layer,
+                learning_rate,
+                scaler,
+                **kwargs,
+            )
+        else:
+            raise ValueError(
+                f"No task type '{task_type}' for model named '{model_name}' available."
+            )
+    elif model_name == "msr1":
         if task_type == "classification":
             return LightningSRClassifier(
                 n_hidden_sets,
@@ -247,29 +306,43 @@ def main(
                 label_dtype=label_dtype,
             )
 
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=8,
-                drop_last=True,
-            )
-            valid_loader = DataLoader(
-                valid_dataset,
-                batch_size=batch_size,
-                shuffle=False,
-                num_workers=8,
-                drop_last=True,
-            )
-            test_loader = DataLoader(
-                test_dataset,
-                batch_size=batch_size,
-                shuffle=False,
-                num_workers=8,
-                drop_last=True,
-            )
+            if model_name == "gnn" or model_name == "srgnn":
+                train_loader = train_dataset
+                valid_loader = valid_dataset
+                test_loader = test_dataset
+            else:
+                train_loader = DataLoader(
+                    train_dataset,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    num_workers=8,
+                    drop_last=True,
+                )
+                valid_loader = DataLoader(
+                    valid_dataset,
+                    batch_size=batch_size,
+                    shuffle=False,
+                    num_workers=8,
+                    drop_last=True,
+                )
+                test_loader = DataLoader(
+                    test_dataset,
+                    batch_size=batch_size,
+                    shuffle=False,
+                    num_workers=8,
+                    drop_last=True,
+                )
 
-            d = [len(train_dataset[0][i][0]) for i in range(len(train_dataset[0]) - 1)]
+            if model_name == "gnn" or model_name == "srgnn":
+                d = [
+                    train_loader.dataset[0].num_node_features,
+                    train_loader.dataset[0].num_edge_features,
+                ]
+            else:
+                d = [
+                    len(train_dataset[0][i][0])
+                    for i in range(len(train_dataset[0]) - 1)
+                ]
 
             if n_hidden_sets is None or len(n_hidden_sets) == 0:
                 n_hidden_sets = [8] * len(d)

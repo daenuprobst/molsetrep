@@ -18,9 +18,10 @@ class Mol2VecEncoder(Encoder):
         super().__init__("Mol2VecEncoder")
 
         dm = DataManager()
-        if not dm.exists("mol2vec_model_300dim.pt"):
+        if not dm.exists("mol2vec_model_300dim.pkl"):
             dm.download_file(
-                "https://deepchemdata.s3-us-west-1.amazonaws.com/trained_models/mol2vec_model_300dim.tar.gz"
+                "https://deepchemdata.s3-us-west-1.amazonaws.com/trained_models/mol2vec_model_300dim.tar.gz",
+                tar=True,
             )
 
         self.model = word2vec.Word2Vec.load(
@@ -100,4 +101,6 @@ class Mol2VecEncoder(Encoder):
             sentence_set = self.sentences2vec([sentence])[0]
             fps.append(sentence_set)
 
-        return super().to_tensor_dataset(fps, labels, label_dtype)
+        return TensorDataset(
+            torch.FloatTensor(fps), torch.tensor(labels, dtype=label_dtype)
+        )

@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Module, Parameter, Linear, BatchNorm1d, ReLU, Linear, Dropout
+from torch.nn import Module, Parameter, Linear, BatchNorm1d, ReLU, Linear
 
 
 class SetRep(Module):

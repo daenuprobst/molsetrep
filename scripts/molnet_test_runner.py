@@ -11,8 +11,6 @@ from lightning.pytorch.loggers import wandb
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-from deepchem.trans import undo_transforms
-
 from molsetrep.utils.datasets import (
     get_class_weights,
     molnet_task_loader,
@@ -26,6 +24,8 @@ from molsetrep.encoders import (
     TripleSetEncoder,
     LigandProtEncoder,
     GraphEncoder,
+    Mol2VecEncoder,
+    Mol2SetEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -38,6 +38,8 @@ from molsetrep.models import (
     LightningGNNRegressor,
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
+    LightningMol2VecClassifier,
+    LightningMol2VecRegressor,
 )
 
 from molsetrep.data import PDBBindFeaturizer
@@ -58,8 +60,12 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         return DualSetEncoder(charges=charges)
     elif model_name == "msr3":
         return TripleSetEncoder(charges=charges)
-    elif model_name == "gnn" or "srgnn":
+    elif model_name == "gnn" or model_name == "srgnn":
         return GraphEncoder(charges=charges)
+    elif model_name == "mol2vec":
+        return Mol2VecEncoder()
+    elif model_name == "mol2set":
+        return Mol2SetEncoder()
     else:
         raise ValueError(f"No model named '{model_name}' available.")
 
@@ -78,7 +84,27 @@ def get_model(
     learning_rate: float = 0.001,
     **kwargs,
 ) -> torch.nn.Module:
-    if model_name == "gnn":
+    if model_name == "mol2vec":
+        if task_type == "classification":
+            return LightningMol2VecClassifier(
+                d, n_classes, n_hidden_channels, class_weights, learning_rate, **kwargs
+            )
+        elif task_type == "regression":
+            ...
+        else:
+            raise ValueError(
+                f"No task type '{task_type}' for model named '{model_name}' available."
+            )
+    elif model_name == "mol2set":
+        if task_type == "classification":
+            ...
+        elif task_type == "regression":
+            ...
+        else:
+            raise ValueError(
+                f"No task type '{task_type}' for model named '{model_name}' available."
+            )
+    elif model_name == "gnn":
         if task_type == "classification":
             return LightningGNNClassifier(
                 6,
@@ -339,10 +365,13 @@ def main(
                     train_loader.dataset[0].num_edge_features,
                 ]
             else:
-                d = [
-                    len(train_dataset[0][i][0])
-                    for i in range(len(train_dataset[0]) - 1)
-                ]
+                if len(train_dataset[0][0].shape) > 1:
+                    d = [
+                        len(train_dataset[0][i][0])
+                        for i in range(len(train_dataset[0]) - 1)
+                    ]
+                else:
+                    d = [train_dataset[0][0].shape[0]]
 
             if n_hidden_sets is None or len(n_hidden_sets) == 0:
                 n_hidden_sets = [8] * len(d)

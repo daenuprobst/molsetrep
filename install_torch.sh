@@ -1,3 +1,5 @@
+# conda create -n molsetrep python=3.10
+
 pip install torch torchvision torchaudio
 pip install torch_geometric
 

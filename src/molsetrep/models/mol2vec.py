@@ -1,12 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Callable
+
 import torch
-import lightning.pytorch as pl
-
-
-from torch.nn import CrossEntropyLoss
+from torch.nn import Module, CrossEntropyLoss
 import torch.nn.functional as F
-from torch_geometric.nn import GIN
-from torch_geometric.nn.pool import global_mean_pool
+
+import lightning.pytorch as pl
 
 from torchmetrics.classification import (
     Accuracy,
@@ -15,119 +13,29 @@ from torchmetrics.classification import (
 )
 from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
 
-from molsetrep.models import GINE, MLP
+from molsetrep.models import SetRep, SetTransformer, DeepSet, MLP
 from molsetrep.metrics import AUPRC
 
 
-class GNNClassifier(torch.nn.Module):
+class LightningMol2VecClassifier(pl.LightningModule):
     def __init__(
         self,
-        in_channels: int,
-        num_layers: int,
-        in_edge_channels: int,
-        n_hidden_channels: Optional[List] = None,
-        n_classes: int = 2,
-        gnn: Optional[torch.nn.Module] = None,
-    ):
-        super(GNNClassifier, self).__init__()
-
-        if n_hidden_channels is None or len(n_hidden_channels) < 2:
-            n_hidden_channels = [32, 16]
-
-        self.in_edge_channels = in_edge_channels
-        self.gnn = gnn
-
-        if self.gnn is None:
-            if self.in_edge_channels > 0:
-                self.gnn = GINE(
-                    in_channels,
-                    n_hidden_channels[0],
-                    num_layers,
-                    edge_dim=in_edge_channels,
-                    jk="cat",
-                )
-            else:
-                self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
-
-        self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], n_classes)
-
-    def forward(self, batch):
-        if self.in_edge_channels > 0:
-            out = self.gnn(
-                batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
-            )
-        else:
-            out = self.gnn(batch.x.float(), batch.edge_index)
-
-        t = global_mean_pool(out, batch.batch)
-        out = self.mlp(t)
-        return F.log_softmax(out, dim=1)
-
-
-class GNNRegressor(torch.nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        num_layers,
-        in_edge_channels,
-        n_hidden_channels: Optional[List] = None,
-        gnn: Optional[torch.nn.Module] = None,
-    ):
-        super(GNNRegressor, self).__init__()
-
-        if n_hidden_channels is None or len(n_hidden_channels) < 2:
-            n_hidden_channels = [32, 16]
-
-        self.in_edge_channels = in_edge_channels
-        self.gnn = gnn
-
-        if self.gnn is None:
-            if self.in_edge_channels > 0:
-                self.gnn = GINE(
-                    in_channels,
-                    n_hidden_channels[0],
-                    num_layers,
-                    edge_dim=in_edge_channels,
-                    jk="cat",
-                )
-            else:
-                self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
-
-        self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], 1)
-
-    def forward(self, batch):
-        if self.in_edge_channels > 0:
-            out = self.gnn(
-                batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
-            )
-        else:
-            out = self.gnn(batch.x.float(), batch.edge_index)
-
-        t = global_mean_pool(out, batch.batch)
-        out = self.mlp(t)
-        return out.squeeze(1)
-
-
-class LightningGNNClassifier(pl.LightningModule):
-    def __init__(
-        self,
-        n_layers: int,
-        n_in_channels: int,
-        n_edge_channels: int,
+        d: List[int],
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
     ) -> None:
-        super(LightningGNNClassifier, self).__init__()
+        super(LightningMol2VecClassifier, self).__init__()
         self.save_hyperparameters()
+
+        if n_hidden_channels is None or len(n_hidden_channels) < 2:
+            n_hidden_channels = [32, 16]
 
         self.class_weights = class_weights
         self.learning_rate = learning_rate
 
-        self.gnn_classifier = GNNClassifier(
-            n_in_channels, n_layers, n_edge_channels, n_hidden_channels, n_classes
-        )
+        self.mlp = MLP(d[0], n_hidden_channels[0], n_classes)
 
         # Criterions
         self.criterion = CrossEntropyLoss()
@@ -153,12 +61,12 @@ class LightningGNNClassifier(pl.LightningModule):
         self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
 
     def forward(self, x):
-        return self.gnn_classifier(x)
+        return self.mlp(x)
 
     def training_step(self, batch, batch_idx):
-        y = batch.y
+        x, y = batch
 
-        out = self(batch)
+        out = self(x)
         loss = self.criterion(out, y)
 
         # Metrics
@@ -176,9 +84,9 @@ class LightningGNNClassifier(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        y = val_batch.y
+        x, y = val_batch
 
-        out = self(val_batch)
+        out = self(x)
         loss = self.criterion_eval(out, y)
 
         # Metrics
@@ -194,9 +102,9 @@ class LightningGNNClassifier(pl.LightningModule):
         self.log("val/f1", self.val_f1, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
-        y = test_batch.y
+        x, y = test_batch
 
-        out = self(test_batch)
+        out = self(x)
         loss = self.criterion_eval(out, y)
 
         # Metrics
@@ -215,25 +123,24 @@ class LightningGNNClassifier(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class LightningGNNRegressor(pl.LightningModule):
+class LightningMol2VecRegressor(pl.LightningModule):
     def __init__(
         self,
-        n_layers: int,
-        n_in_channels: int,
-        n_edge_channels: int,
+        n_hidden_sets: List[int],
+        n_elements: List[int],
+        d: List[int],
         n_hidden_channels: Optional[List] = None,
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
+        set_layer: str = "setrep",
     ) -> None:
-        super(LightningGNNRegressor, self).__init__()
+        super(LightningMol2VecRegressor, self).__init__()
         self.save_hyperparameters()
 
         self.learning_rate = learning_rate
         self.scaler = scaler
 
-        self.gnn_regressor = GNNRegressor(
-            n_in_channels, n_layers, n_edge_channels, n_hidden_channels
-        )
+        self.mlp = MLP(d[0], n_hidden_channels[0], 1)
 
         # Metrics
         self.train_r2 = R2Score()
@@ -247,12 +154,12 @@ class LightningGNNRegressor(pl.LightningModule):
         self.test_mae = MeanAbsoluteError()
 
     def forward(self, x):
-        return self.gnn_regressor(x)
+        return self.mlp(x).squeeze(1)
 
     def training_step(self, batch, batch_idx):
-        y = batch.y
+        x, y = batch
 
-        out = self(batch)
+        out = self(x)
         loss = F.mse_loss(out, y)
 
         if self.scaler:
@@ -278,9 +185,9 @@ class LightningGNNRegressor(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        y = val_batch.y
+        x, y = val_batch
 
-        out = self(val_batch)
+        out = self(x)
         loss = F.mse_loss(out, y)
 
         if self.scaler:
@@ -304,9 +211,9 @@ class LightningGNNRegressor(pl.LightningModule):
         self.log("val/mae", self.val_mae, on_step=False, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
-        y = test_batch.y
+        x, y = test_batch
 
-        out = self(test_batch)
+        out = self(x)
         loss = F.mse_loss(out, y)
 
         if self.scaler:

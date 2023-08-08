@@ -43,3 +43,8 @@ from molsetrep.models.sr_gnn import (
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
 )
+
+from molsetrep.models.mol2vec import (
+    LightningMol2VecClassifier,
+    LightningMol2VecRegressor,
+)

@@ -126,16 +126,16 @@ class LightningMol2VecClassifier(pl.LightningModule):
 class LightningMol2VecRegressor(pl.LightningModule):
     def __init__(
         self,
-        n_hidden_sets: List[int],
-        n_elements: List[int],
         d: List[int],
         n_hidden_channels: Optional[List] = None,
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
-        set_layer: str = "setrep",
     ) -> None:
         super(LightningMol2VecRegressor, self).__init__()
         self.save_hyperparameters()
+
+        if n_hidden_channels is None or len(n_hidden_channels) < 2:
+            n_hidden_channels = [32, 16]
 
         self.learning_rate = learning_rate
         self.scaler = scaler

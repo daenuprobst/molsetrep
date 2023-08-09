@@ -10,9 +10,7 @@ from rdkit.Chem import MolFromSmiles
 
 from molsetrep.encoders.encoder import Encoder
 from molsetrep.encoders.common import (
-    one_hot_encode,
     get_atomic_invariants,
-    get_bond_invariants,
 )
 
 
@@ -26,6 +24,7 @@ class LigandProtEncoder(Encoder):
         mols: Iterable[Any],
         labels: Iterable[Any],
         label_dtype: Optional[torch.dtype] = None,
+        **kwargs
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 

@@ -85,6 +85,7 @@ class SECFPEncoder(Encoder):
         min_radius: int = 1,
         graph_embedder: Optional[Estimator] = None,
         pretrained_graph_embedder: bool = False,
+        **kwargs
     ) -> TensorDataset:
         if graph_embedder is None:
             graph_embedder = GL2Vec()

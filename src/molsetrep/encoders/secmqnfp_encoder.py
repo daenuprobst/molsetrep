@@ -34,6 +34,7 @@ class SECMQNFPEncoder(Encoder):
         kekulize: bool = True,
         min_radius: int = 1,
         standardize: bool = True,
+        **kwargs
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 

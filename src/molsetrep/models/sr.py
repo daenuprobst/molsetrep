@@ -308,3 +308,5 @@ class LightningSRRegressor(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
+        # return {"optimizer": optimizer, "scheduler": scheduler, "monitor": "val/rmse"}

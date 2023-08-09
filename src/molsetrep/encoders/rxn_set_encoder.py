@@ -63,6 +63,7 @@ class RXNSetEncoder(Encoder):
         rxn_smiles: Iterable[str],
         labels: Iterable[Any],
         label_dtype: Optional[torch.dtype] = None,
+        **kwargs
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 

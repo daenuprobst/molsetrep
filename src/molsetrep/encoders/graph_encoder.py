@@ -1,8 +1,10 @@
+import random
 from typing import Optional, Any, Iterable
 from collections import defaultdict
 
 import torch
 import torch_geometric
+import numpy as np
 import networkx as nx
 
 from torch_geometric.data import Data
@@ -20,8 +22,9 @@ from molsetrep.encoders.common import (
 
 
 class GraphEncoder:
-    def __init__(self, charges: bool = True) -> "GraphEncoder":
+    def __init__(self, charges: bool = True, fix_seed=True) -> "GraphEncoder":
         self.charges = charges
+        self.fix_seed = fix_seed
 
     def mol_to_nx(self, mol: Mol) -> nx.Graph:
         G = nx.Graph()
@@ -179,6 +182,7 @@ class GraphEncoder:
         suppress_rdkit_warnings: bool = True,
         label_dtype: torch.dtype = None,
         shuffle: bool = False,
+        **kwargs,
     ):
         if suppress_rdkit_warnings:
             RDLogger.DisableLog("rdApp.*")
@@ -195,11 +199,22 @@ class GraphEncoder:
                 self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
             )
 
+        def seed_worker(worker_id):
+            worker_seed = torch.initial_seed() % 2**32
+            np.random.seed(worker_seed)
+            random.seed(worker_seed)
+
+        g = torch.Generator()
+        g.manual_seed(0)
+
         data_loader = DataLoader(
             train_data_list,
             batch_size=batch_size,
             shuffle=shuffle,
             drop_last=True,
+            worker_init_fn=seed_worker if self.fix_seed else None,
+            generator=g if self.fix_seed else None,
+            num_workers=8,
         )
 
         return data_loader

@@ -1,3 +1,4 @@
-python scripts/molnet_test_runner.py bbbp msr2 --use-class-weights --task-type classification --n 4 --splitter scaffold --set-layer deepset --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 32 --n-elements 32 --n-hidden-channels 64 --n-hidden-channels 32 --learning-rate 0.0001 --max-epochs 100
-python scripts/molnet_test_runner.py bbbp msr2 --use-class-weights --task-type classification --n 4 --splitter scaffold --set-layer setrep --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 32 --n-elements 32 --n-hidden-channels 64 --n-hidden-channels 32 --learning-rate 0.0001 --max-epochs 100
-python scripts/molnet_test_runner.py bbbp msr2 --use-class-weights --task-type classification --n 4 --splitter scaffold --set-layer transformer --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 32 --n-elements 32 --n-hidden-channels 64 --n-hidden-channels 32 --learning-rate 0.0001 --max-epochs 100
+# python scripts/molnet_test_runner.py delaney gnn --n 10 --max-epochs 100 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32
+# python scripts/molnet_test_runner.py delaney srgnn --n 10 --max-epochs 100 --project gine-baselines --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32
+
+python scripts/molnet_test_runner.py delaney srgnn --n 10 --max-epochs 100 --project gine-baselines --n-hidden-sets 256 --n-elements 256 --n-hidden-channels 64 --n-hidden-channels 32

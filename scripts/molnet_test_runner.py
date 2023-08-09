@@ -1,3 +1,5 @@
+import os
+import random
 from typing import List, Optional
 from functools import partial
 import typer
@@ -6,7 +8,7 @@ import numpy as np
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 from wandb import finish as wandb_finish
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import wandb
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -49,6 +51,7 @@ from rdkit import RDLogger
 RDLogger.DisableLog("rdApp.*")
 
 app = typer.Typer(pretty_exceptions_enable=False)
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
@@ -90,16 +93,39 @@ def get_model(
                 d, n_classes, n_hidden_channels, class_weights, learning_rate, **kwargs
             )
         elif task_type == "regression":
-            ...
+            return LightningMol2VecRegressor(
+                d,
+                n_hidden_channels,
+                learning_rate,
+                scaler,
+            )
         else:
             raise ValueError(
                 f"No task type '{task_type}' for model named '{model_name}' available."
             )
     elif model_name == "mol2set":
         if task_type == "classification":
-            ...
+            return LightningSRClassifier(
+                n_hidden_sets,
+                n_elements,
+                d,
+                n_classes,
+                n_hidden_channels,
+                class_weights,
+                learning_rate,
+                set_layer,
+            )
         elif task_type == "regression":
-            ...
+            return LightningSRRegressor(
+                n_hidden_sets,
+                n_elements,
+                d,
+                n_hidden_channels,
+                learning_rate=learning_rate,
+                set_layer=set_layer,
+                scaler=scaler,
+                **kwargs,
+            )
         else:
             raise ValueError(
                 f"No task type '{task_type}' for model named '{model_name}' available."
@@ -261,6 +287,8 @@ def main(
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
     charges: bool = True,
+    project: Optional[str] = None,
+    variant: Optional[str] = None,
 ):
     featurizer = None
     set_name = None
@@ -277,7 +305,11 @@ def main(
         label_dtype = torch.float
 
     for task_idx in range(len(tasks)):
-        for _ in range(n):
+        for experiment_idx in range(n):
+            torch.manual_seed(experiment_idx)
+            random.seed(experiment_idx)
+            np.random.seed(experiment_idx)
+
             train, valid, test, _, transforms = molnet_loader(
                 data_set_name,
                 splitter=splitter,
@@ -285,6 +317,7 @@ def main(
                 transformers=[],
                 featurizer=featurizer,
                 set_name=set_name,
+                seed=experiment_idx,
             )
 
             class_weights = None
@@ -320,17 +353,28 @@ def main(
                 train.X if data_set_name == "pdbbind" else train.ids,
                 train_y,
                 label_dtype=label_dtype,
+                batch_size=batch_size,
             )
             valid_dataset = enc.encode(
                 valid.X if data_set_name == "pdbbind" else valid.ids,
                 valid_y,
                 label_dtype=label_dtype,
+                batch_size=batch_size,
             )
             test_dataset = enc.encode(
                 test.X if data_set_name == "pdbbind" else test.ids,
                 test_y,
                 label_dtype=label_dtype,
+                batch_size=batch_size,
             )
+
+            def seed_worker(worker_id):
+                worker_seed = torch.initial_seed() % 2**32
+                np.random.seed(worker_seed)
+                random.seed(worker_seed)
+
+            g = torch.Generator()
+            g.manual_seed(0)
 
             if model_name == "gnn" or model_name == "srgnn":
                 train_loader = train_dataset
@@ -343,6 +387,8 @@ def main(
                     shuffle=True,
                     num_workers=8,
                     drop_last=True,
+                    worker_init_fn=seed_worker,
+                    generator=g,
                 )
                 valid_loader = DataLoader(
                     valid_dataset,
@@ -350,6 +396,8 @@ def main(
                     shuffle=False,
                     num_workers=8,
                     drop_last=True,
+                    worker_init_fn=seed_worker,
+                    generator=g,
                 )
                 test_loader = DataLoader(
                     test_dataset,
@@ -357,6 +405,8 @@ def main(
                     shuffle=False,
                     num_workers=8,
                     drop_last=True,
+                    worker_init_fn=seed_worker,
+                    generator=g,
                 )
 
             if model_name == "gnn" or model_name == "srgnn":
@@ -402,9 +452,19 @@ def main(
                     monitor=f"val/{monitor}", mode="min"
                 )
 
-            wandb_logger = wandb.WandbLogger(project=f"MSR_{data_set_name}_{splitter}")
+            project_name = f"MSR_{data_set_name}_{splitter}"
+            if project is not None:
+                project_name = project
+
+            wandb_logger = wandb.WandbLogger(project=project_name)
             wandb_logger.experiment.config.update(
-                {"model": model_name, "task": tasks[task_idx]}
+                {
+                    "model": model_name,
+                    "task": tasks[task_idx],
+                    "variant": variant,
+                    "dataset": data_set_name,
+                    "batch_size": batch_size,
+                }
             )
             wandb_logger.watch(model, log="all")
 

@@ -53,7 +53,5 @@ class Encoder:
 
         return TensorDataset(*Xn_tensors, torch.tensor(y, dtype=y_dtype))
 
-    def encode(
-        self,
-    ) -> TensorDataset:
+    def encode(self, **kwargs) -> TensorDataset:
         ...

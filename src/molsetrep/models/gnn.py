@@ -167,11 +167,31 @@ class LightningGNNClassifier(pl.LightningModule):
         self.train_auprc(out, y)
         self.train_f1(out, y)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True)
-        self.log("train/acc", self.train_accuracy, on_step=False, on_epoch=True)
-        self.log("train/auroc", self.train_auroc, on_step=False, on_epoch=True)
-        self.log("train/auprc", self.train_auprc, on_step=False, on_epoch=True)
-        self.log("train/f1", self.train_f1, on_step=False, on_epoch=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "train/acc",
+            self.train_accuracy,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "train/auroc",
+            self.train_auroc,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "train/auprc",
+            self.train_auprc,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "train/f1", self.train_f1, on_step=False, on_epoch=True, batch_size=len(y)
+        )
 
         return loss
 
@@ -187,11 +207,21 @@ class LightningGNNClassifier(pl.LightningModule):
         self.val_auprc(out, y)
         self.val_f1(out, y)
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True)
-        self.log("val/acc", self.val_accuracy, on_step=False, on_epoch=True)
-        self.log("val/auroc", self.val_auroc, on_step=False, on_epoch=True)
-        self.log("val/auprc", self.val_auprc, on_step=False, on_epoch=True)
-        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "val/acc",
+            self.val_accuracy,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "val/auroc", self.val_auroc, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "val/auprc", self.val_auprc, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, batch_size=len(y))
 
     def test_step(self, test_batch, batch_idx):
         y = test_batch.y
@@ -205,11 +235,31 @@ class LightningGNNClassifier(pl.LightningModule):
         self.test_auprc(out, y)
         self.test_f1(out, y)
 
-        self.log("test/loss", loss, on_step=False, on_epoch=True)
-        self.log("test/acc", self.test_accuracy)
-        self.log("test/auroc", self.test_auroc)
-        self.log("test/auprc", self.test_auprc)
-        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True)
+        self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "test/acc",
+            self.test_accuracy,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "test/auroc",
+            self.test_auroc,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "test/auprc",
+            self.test_auprc,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "test/f1", self.test_f1, on_step=False, on_epoch=True, batch_size=len(y)
+        )
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -270,10 +320,20 @@ class LightningGNNRegressor(pl.LightningModule):
         self.train_rmse(out, y)
         self.train_mae(out, y)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True)
-        self.log("train/r2", self.train_r2, on_step=False, on_epoch=True)
-        self.log("train/rmse", self.train_rmse, on_step=False, on_epoch=True)
-        self.log("train/mae", self.train_mae, on_step=False, on_epoch=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "train/r2", self.train_r2, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "train/rmse",
+            self.train_rmse,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "train/mae", self.train_mae, on_step=False, on_epoch=True, batch_size=len(y)
+        )
 
         return loss
 
@@ -298,10 +358,14 @@ class LightningGNNRegressor(pl.LightningModule):
         self.val_rmse(out, y)
         self.val_mae(out, y)
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True)
-        self.log("val/r2", self.val_r2, on_step=False, on_epoch=True)
-        self.log("val/rmse", self.val_rmse, on_step=False, on_epoch=True)
-        self.log("val/mae", self.val_mae, on_step=False, on_epoch=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("val/r2", self.val_r2, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "val/rmse", self.val_rmse, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "val/mae", self.val_mae, on_step=False, on_epoch=True, batch_size=len(y)
+        )
 
     def test_step(self, test_batch, batch_idx):
         y = test_batch.y
@@ -324,10 +388,16 @@ class LightningGNNRegressor(pl.LightningModule):
         self.test_rmse(out, y)
         self.test_mae(out, y)
 
-        self.log("test/loss", loss, on_step=False, on_epoch=True)
-        self.log("test/r2", self.test_r2, on_step=False, on_epoch=True)
-        self.log("test/rmse", self.test_rmse, on_step=False, on_epoch=True)
-        self.log("test/mae", self.test_mae, on_step=False, on_epoch=True)
+        self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "test/r2", self.test_r2, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "test/rmse", self.test_rmse, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "test/mae", self.test_mae, on_step=False, on_epoch=True, batch_size=len(y)
+        )
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)

@@ -1,9 +1,81 @@
-import torch
-from torch.utils.data import DataLoader
+from typing import List
+from dataclasses import dataclass
+from pathlib import Path
 import numpy as np
 import deepchem.molnet as mn
+import pandas as pd
 
-from molsetrep.encoders import Encoder
+
+@dataclass
+class CustomDataset:
+    ids: np.array
+    y: np.array
+
+    @staticmethod
+    def from_df(df, ids_column: str, y_columns: List[str]):
+        return CustomDataset(
+            df[ids_column].to_numpy(), df[df.columns.intersection(y_columns)].to_numpy()
+        )
+
+
+def doyle_task_loader(name: str, freaturizer=None, **kwargs):
+    return ["yield"]
+
+
+def doyle_loader(name: str, featurizer=None, seed=42, **kwargs):
+    fold_idx = kwargs.get("fold_idx", 0)
+
+    root_path = Path(__file__).resolve().parent
+    doyle_path = Path(root_path, "../../../data/doyle")
+
+    fold_files = []
+    for file in doyle_path.glob("*.csv"):
+        fold_files.append(file)
+
+    df = pd.read_csv(fold_files[fold_idx])
+
+    train, valid, test = np.split(
+        df.sample(frac=1.0, random_state=seed),
+        [int(0.5 * len(df)), int(0.75 * len(df))],
+    )
+
+    tasks = ["yield"]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
+def ocelot_task_loader(name: str, freaturizer=None, **kwargs):
+    root_path = Path(__file__).resolve().parent
+    df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
+    col_names = list(df.columns)
+    # return col_names[1:-1]
+    return ["homo", "lumo"]
+
+
+def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
+    root_path = Path(__file__).resolve().parent
+    df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
+    col_names = list(df.columns)
+    # tasks = col_names[1:-1]
+    tasks = ["homo", "lumo"]
+
+    train, valid, test = np.split(
+        df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df)), int(0.9 * len(df))]
+    )
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
 
 
 def molnet_task_loader(name: str, featurizer=None, **kwargs):
@@ -43,52 +115,3 @@ def get_class_weights(y, task_idx=None):
         weights = [1 - c / y_t[task_idx].shape[0] for c in counts]
 
         return np.array(weights), np.array(counts)
-
-
-def molnet_encoded_loader(
-    name: str,
-    encoder: Encoder,
-    task_idx: int,
-    label_dtype=torch.long,
-    batch_size=64,
-    **kwargs,
-):
-    train, valid, test, _ = molnet_loader(name, kwargs)
-
-    class_weights, class_counts = get_class_weights(train.y, task_idx)
-
-    train_dataset = encoder.encode(
-        train.ids, [y[task_idx] for y in train.y], label_dtype=label_dtype
-    )
-    valid_dataset = encoder.encode(
-        valid.ids, [y[task_idx] for y in valid.y], label_dtype=label_dtype
-    )
-    test_dataset = encoder.encode(
-        test.ids, [y[task_idx] for y in test.y], label_dtype=label_dtype
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=8,
-        drop_last=True,
-    )
-    valid_loader = DataLoader(
-        valid_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=8,
-        drop_last=True,
-    )
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=8,
-        drop_last=True,
-    )
-
-    d = [len(train_dataset[0][i][0]) for i in range(len(train_dataset[0]))]
-
-    return train_loader, valid_loader, test_loader, d, [y[task_idx] for y in test.y]

@@ -79,10 +79,12 @@ class RXNSetEncoder(Encoder):
             fp_ecfp_p = []
 
             for mol in reactants:
-                fp_ecfp_r.append(fpgen.GetFingerprint(mol))
+                if mol is not None:
+                    fp_ecfp_r.append(fpgen.GetFingerprint(mol))
 
             for mol in products:
-                fp_ecfp_p.append(fpgen.GetFingerprint(mol))
+                if mol is not None:
+                    fp_ecfp_p.append(fpgen.GetFingerprint(mol))
 
             fps_r.append(fp_ecfp_r)
             fps_p.append(fp_ecfp_p)

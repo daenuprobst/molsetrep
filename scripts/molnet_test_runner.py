@@ -17,6 +17,10 @@ from molsetrep.utils.datasets import (
     get_class_weights,
     molnet_task_loader,
     molnet_loader,
+    ocelot_loader,
+    ocelot_task_loader,
+    doyle_loader,
+    doyle_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -28,6 +32,7 @@ from molsetrep.encoders import (
     GraphEncoder,
     Mol2VecEncoder,
     Mol2SetEncoder,
+    RXNSetEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -55,7 +60,9 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
-    if data_set_name == "pdbbind":
+    if data_set_name == "doyle":
+        return RXNSetEncoder()
+    elif data_set_name == "pdbbind":
         return LigandProtEncoder()
     elif model_name == "msr1":
         return SingleSetEncoder(charges=charges)
@@ -292,12 +299,22 @@ def main(
 ):
     featurizer = None
     set_name = None
+    data_loader = molnet_loader
+    task_loader = molnet_task_loader
+
+    if data_set_name == "ocelot":
+        data_loader = ocelot_loader
+        task_loader = ocelot_task_loader
+
+    if data_set_name == "doyle":
+        data_loader = doyle_loader
+        task_loader = doyle_task_loader
+
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
         set_name = "refined"
 
-    tasks = molnet_task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
-
+    tasks = task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
     print(f'\nDataset "{data_set_name}" contains {len(tasks)} task(s).')
 
     label_dtype = torch.long
@@ -310,7 +327,7 @@ def main(
             random.seed(experiment_idx)
             np.random.seed(experiment_idx)
 
-            train, valid, test, _, transforms = molnet_loader(
+            train, valid, test, _, transforms = data_loader(
                 data_set_name,
                 splitter=splitter,
                 reload=False,
@@ -318,6 +335,7 @@ def main(
                 featurizer=featurizer,
                 set_name=set_name,
                 seed=experiment_idx,
+                fold_idx=experiment_idx,
             )
 
             class_weights = None
@@ -464,6 +482,7 @@ def main(
                     "variant": variant,
                     "dataset": data_set_name,
                     "batch_size": batch_size,
+                    "splitter": splitter,
                 }
             )
             wandb_logger.watch(model, log="all")

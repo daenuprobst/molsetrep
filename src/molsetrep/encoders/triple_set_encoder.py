@@ -13,6 +13,8 @@ from rdkit.Chem import (
     Descriptors,
 )
 
+from descriptastorus.descriptors import rdNormalizedDescriptors
+
 from molsetrep.encoders.encoder import Encoder
 from molsetrep.encoders.common import (
     one_hot_encode,
@@ -81,33 +83,36 @@ class TripleSetEncoder(Encoder):
                 sh_mol = MolFromSmiles(sh, sanitize=True)
 
                 if sh_mol:
+                    norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
+                    feats = norm_2d_gen.process(sh)[1:]
                     fp_global.append(
-                        [
-                            Descriptors.MolLogP(sh_mol),
-                            rdMolDescriptors.CalcExactMolWt(sh_mol),
-                            rdMolDescriptors.CalcTPSA(sh_mol),
-                            rdMolDescriptors.CalcExactMolWt(sh_mol),
-                            rdMolDescriptors.CalcTPSA(sh_mol),
-                            rdMolDescriptors.CalcPhi(sh_mol),
-                            rdMolDescriptors.CalcKappa1(sh_mol),
-                            rdMolDescriptors.CalcKappa2(sh_mol),
-                            rdMolDescriptors.CalcKappa3(sh_mol),
-                            rdMolDescriptors.CalcChi0n(sh_mol),
-                            rdMolDescriptors.CalcChi0v(sh_mol),
-                            rdMolDescriptors.CalcChi1n(sh_mol),
-                            rdMolDescriptors.CalcChi1v(sh_mol),
-                            rdMolDescriptors.CalcChi2n(sh_mol),
-                            rdMolDescriptors.CalcChi2v(sh_mol),
-                        ]
-                        + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
-                        + one_hot_encode(
-                            rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
-                        )
-                        + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
-                        + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
+                        feats
+                        # [
+                        #     Descriptors.MolLogP(sh_mol),
+                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+                        #     rdMolDescriptors.CalcTPSA(sh_mol),
+                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+                        #     rdMolDescriptors.CalcTPSA(sh_mol),
+                        #     rdMolDescriptors.CalcPhi(sh_mol),
+                        #     rdMolDescriptors.CalcKappa1(sh_mol),
+                        #     rdMolDescriptors.CalcKappa2(sh_mol),
+                        #     rdMolDescriptors.CalcKappa3(sh_mol),
+                        #     rdMolDescriptors.CalcChi0n(sh_mol),
+                        #     rdMolDescriptors.CalcChi0v(sh_mol),
+                        #     rdMolDescriptors.CalcChi1n(sh_mol),
+                        #     rdMolDescriptors.CalcChi1v(sh_mol),
+                        #     rdMolDescriptors.CalcChi2n(sh_mol),
+                        #     rdMolDescriptors.CalcChi2v(sh_mol),
+                        # ]
+                        # + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
+                        # + one_hot_encode(
+                        #     rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
+                        # )
+                        # + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
+                        # + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
                     )
                 else:
-                    fp_global.append([0] * 229)
+                    fp_global.append([0] * 200)
 
             fps_a.append(fp_atomic)
             fps_b.append(fp_bond)

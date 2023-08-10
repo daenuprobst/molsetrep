@@ -33,7 +33,9 @@ class GraphEncoder:
             ComputeGasteigerCharges(mol)
 
         for atom in mol.GetAtoms():
-            G.add_node(atom.GetIdx(), **get_atomic_invariants_as_dict(atom))
+            G.add_node(
+                atom.GetIdx(), **get_atomic_invariants_as_dict(atom, self.charges)
+            )
 
         for bond in mol.GetBonds():
             G.add_edge(

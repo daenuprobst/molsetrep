@@ -10,6 +10,7 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from rdkit.Chem import (
     rdMolDescriptors,
     MolFromSmiles,
+    GetSSSR,
     Descriptors,
 )
 
@@ -20,6 +21,7 @@ from molsetrep.encoders.common import (
     one_hot_encode,
     get_atomic_invariants,
     get_bond_invariants,
+    get_ring_invariants,
 )
 
 
@@ -78,41 +80,50 @@ class TripleSetEncoder(Encoder):
 
                 fp_bond.append([0] * l)
 
+            # norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
+            # feats = norm_2d_gen.process(smi)[1:]
             fp_global = []
-            for sh in MHFPEncoder.shingling_from_mol(mol, min_radius=0):
-                sh_mol = MolFromSmiles(sh, sanitize=True)
 
-                if sh_mol:
-                    norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
-                    feats = norm_2d_gen.process(sh)[1:]
-                    fp_global.append(
-                        feats
-                        # [
-                        #     Descriptors.MolLogP(sh_mol),
-                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
-                        #     rdMolDescriptors.CalcTPSA(sh_mol),
-                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
-                        #     rdMolDescriptors.CalcTPSA(sh_mol),
-                        #     rdMolDescriptors.CalcPhi(sh_mol),
-                        #     rdMolDescriptors.CalcKappa1(sh_mol),
-                        #     rdMolDescriptors.CalcKappa2(sh_mol),
-                        #     rdMolDescriptors.CalcKappa3(sh_mol),
-                        #     rdMolDescriptors.CalcChi0n(sh_mol),
-                        #     rdMolDescriptors.CalcChi0v(sh_mol),
-                        #     rdMolDescriptors.CalcChi1n(sh_mol),
-                        #     rdMolDescriptors.CalcChi1v(sh_mol),
-                        #     rdMolDescriptors.CalcChi2n(sh_mol),
-                        #     rdMolDescriptors.CalcChi2v(sh_mol),
-                        # ]
-                        # + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
-                        # + one_hot_encode(
-                        #     rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
-                        # )
-                        # + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
-                        # + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
-                    )
-                else:
-                    fp_global.append([0] * 200)
+            for ring in GetSSSR(mol):
+                fp_global.append(get_ring_invariants(list(ring), mol))
+
+            if len(fp_global) == 0:
+                fp_global.append([0] * 11)
+
+            # for sh in MHFPEncoder.shingling_from_mol(mol, min_radius=0):
+            #     sh_mol = MolFromSmiles(sh, sanitize=True)
+
+            #     if sh_mol:
+            #         norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
+            #         feats = norm_2d_gen.process(sh)[1:]
+            #         fp_global.append(
+            #             feats
+            #             # [
+            #             #     Descriptors.MolLogP(sh_mol),
+            #             #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+            #             #     rdMolDescriptors.CalcTPSA(sh_mol),
+            #             #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+            #             #     rdMolDescriptors.CalcTPSA(sh_mol),
+            #             #     rdMolDescriptors.CalcPhi(sh_mol),
+            #             #     rdMolDescriptors.CalcKappa1(sh_mol),
+            #             #     rdMolDescriptors.CalcKappa2(sh_mol),
+            #             #     rdMolDescriptors.CalcKappa3(sh_mol),
+            #             #     rdMolDescriptors.CalcChi0n(sh_mol),
+            #             #     rdMolDescriptors.CalcChi0v(sh_mol),
+            #             #     rdMolDescriptors.CalcChi1n(sh_mol),
+            #             #     rdMolDescriptors.CalcChi1v(sh_mol),
+            #             #     rdMolDescriptors.CalcChi2n(sh_mol),
+            #             #     rdMolDescriptors.CalcChi2v(sh_mol),
+            #             # ]
+            #             # + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
+            #             # + one_hot_encode(
+            #             #     rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
+            #             # )
+            #             # + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
+            #             # + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
+            #         )
+            #     else:
+            #         fp_global.append([0] * 200)
 
             fps_a.append(fp_atomic)
             fps_b.append(fp_bond)

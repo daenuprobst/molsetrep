@@ -22,22 +22,25 @@
 # python scripts/molnet_test_runner.py bbbp msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py bbbp msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 
-python scripts/molnet_test_runner.py delaney msr1 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py delaney msr2 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py delaney msr1 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py delaney msr2 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 
-python scripts/molnet_test_runner.py lipo msr1 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py lipo msr1 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 
-python scripts/molnet_test_runner.py delaney msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py delaney msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py delaney msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py delaney msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
-python scripts/molnet_test_runner.py lipo msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py lipo msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
-python scripts/molnet_test_runner.py clintox msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py clintox msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 200 --project gine-baselines --no-charges --variant test
 
-python scripts/molnet_test_runner.py freesolv msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py freesolv msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py clintox msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py clintox msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --variant no_charges
+
+# python scripts/molnet_test_runner.py freesolv msr1 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
+# python scripts/molnet_test_runner.py freesolv msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
 # python scripts/molnet_test_runner.py doyle msr2 --n 5 --max-epochs 200 --n-hidden-sets 128 --n-elements 128 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32

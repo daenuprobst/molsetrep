@@ -34,18 +34,18 @@ def get_bond_invariants_as_dict(bond):
 
 def get_atomic_invariants(atom, charges: bool = True):
     atomic_invariants = []
-    atomic_invariants += one_hot_encode(atom.GetDegree(), 5)
-    atomic_invariants += one_hot_encode(
-        atom.GetExplicitValence()
-        + atom.GetImplicitValence()
-        - atom.GetNumExplicitHs()
-        - atom.GetNumImplicitHs(),
-        6,
-    )
+    atomic_invariants += one_hot_encode(atom.GetTotalDegree(), 6)
+    # atomic_invariants += one_hot_encode(
+    #     atom.GetExplicitValence()
+    #     + atom.GetImplicitValence()
+    #     - atom.GetNumExplicitHs()
+    #     - atom.GetNumImplicitHs(),
+    #     6,
+    # )
     atomic_invariants += one_hot_encode(atom.GetAtomicNum(), 100)
     atomic_invariants += one_hot_encode(atom.GetFormalCharge(), [-2, -1, 0, 1, 2])
     atomic_invariants += one_hot_encode(
-        atom.GetChiralTag(),
+        atom.GetHybridization(),
         [
             HybridizationType.SP,
             HybridizationType.SP2,
@@ -62,8 +62,7 @@ def get_atomic_invariants(atom, charges: bool = True):
         atomic_invariants.append(float(atom.GetProp("_GasteigerCharge")))
     # atomic_invariants.append(PT.GetRvdw(atom.GetAtomicNum()))
 
-    total_hs = atom.GetNumExplicitHs() + atom.GetNumImplicitHs()
-    atomic_invariants += one_hot_encode(total_hs, 6)
+    atomic_invariants += one_hot_encode(atom.GetTotalNumHs(), 6)
 
     return atomic_invariants
 

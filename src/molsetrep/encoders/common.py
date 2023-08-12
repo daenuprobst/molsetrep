@@ -55,7 +55,7 @@ def get_atomic_invariants(atom, charges: bool = True):
         ],
     )
     atomic_invariants += one_hot_encode(atom.GetChiralTag(), 4)
-    atomic_invariants.append(atom.GetMass())
+    # atomic_invariants.append(atom.GetMass())
     atomic_invariants.append(int(atom.IsInRing() == True))
 
     if charges:
@@ -86,8 +86,8 @@ def get_bond_invariants(bond):
     bond_invariants += one_hot_encode(int(bond.GetStereo()), 6)
     bond_invariants.append(int(bond.GetIsAromatic() == True))
     bond_invariants.append(int(bond.GetIsConjugated() == True))
-    bond_invariants.append(bond.GetValenceContrib(atom_a))
-    bond_invariants.append(bond.GetValenceContrib(atom_b))
+    bond_invariants += one_hot_encode(int(bond.GetValenceContrib(atom_a)), 3)
+    bond_invariants += one_hot_encode(int(bond.GetValenceContrib(atom_b)), 3)
 
     return bond_invariants
 

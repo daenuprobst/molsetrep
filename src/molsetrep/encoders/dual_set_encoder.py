@@ -51,8 +51,8 @@ class DualSetEncoder(Encoder):
 
                 bond_invariants += one_hot_encode(atom_a.GetAtomicNum(), 100)
                 bond_invariants += one_hot_encode(atom_b.GetAtomicNum(), 100)
-                bond_invariants += one_hot_encode(atom_a.GetDegree(), 5)
-                bond_invariants += one_hot_encode(atom_b.GetDegree(), 5)
+                bond_invariants += one_hot_encode(atom_a.GetTotalDegree(), 5)
+                bond_invariants += one_hot_encode(atom_b.GetTotalDegree(), 5)
                 bond_invariants.append(int(atom_a.IsInRing() == True))
                 bond_invariants.append(int(atom_b.IsInRing() == True))
 
@@ -63,7 +63,7 @@ class DualSetEncoder(Encoder):
                 fp_bond.append(bond_invariants)
 
             if len(fp_bond) == 0:
-                l = 5 + 202 + 12 + 7 + 8
+                l = 5 + 202 + 12 + 7 + 12
 
                 if not self.charges:
                     l -= 2

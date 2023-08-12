@@ -2,6 +2,7 @@ import os
 import random
 from typing import List, Optional
 from functools import partial
+from multiprocessing import cpu_count
 import typer
 import torch
 import numpy as np
@@ -403,7 +404,7 @@ def main(
                     train_dataset,
                     batch_size=batch_size,
                     shuffle=True,
-                    num_workers=8,
+                    num_workers=cpu_count() if cpu_count() < 8 else 8,
                     drop_last=True,
                     worker_init_fn=seed_worker,
                     generator=g,
@@ -412,7 +413,7 @@ def main(
                     valid_dataset,
                     batch_size=batch_size,
                     shuffle=False,
-                    num_workers=8,
+                    num_workers=cpu_count() if cpu_count() < 8 else 8,
                     drop_last=True,
                     worker_init_fn=seed_worker,
                     generator=g,
@@ -421,7 +422,7 @@ def main(
                     test_dataset,
                     batch_size=batch_size,
                     shuffle=False,
-                    num_workers=8,
+                    num_workers=cpu_count() if cpu_count() < 8 else 8,
                     drop_last=True,
                     worker_init_fn=seed_worker,
                     generator=g,

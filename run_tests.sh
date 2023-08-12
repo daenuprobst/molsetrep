@@ -35,7 +35,7 @@
 # python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
 # python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 200 --project gine-baselines --no-charges --variant test
+python scripts/molnet_test_runner.py bace_classification msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 200 --project gine-baselines --no-charges --variant bondfix2
 
 # python scripts/molnet_test_runner.py clintox msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py clintox msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --variant no_charges

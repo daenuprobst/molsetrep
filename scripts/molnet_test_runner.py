@@ -471,6 +471,11 @@ def main(
                     monitor=f"val/{monitor}", mode="min"
                 )
 
+            if monitor == "loss":
+                checkpoint_callback = ModelCheckpoint(
+                    monitor=f"val/{monitor}", mode="min"
+                )
+
             project_name = f"MSR_{data_set_name}_{splitter}"
             if project is not None:
                 project_name = project

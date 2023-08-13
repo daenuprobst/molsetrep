@@ -35,7 +35,7 @@
 # python scripts/molnet_test_runner.py lipo msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
 # python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
-python scripts/molnet_test_runner.py bace_classification msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 200 --project gine-baselines --no-charges --variant bondfix2
+# python scripts/molnet_test_runner.py bace_classification msr2 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 50 --project gine-baselines --no-charges --variant loss2
 
 # python scripts/molnet_test_runner.py clintox msr1 --task-type classification --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py clintox msr2 --task-type classification --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --variant no_charges
@@ -44,3 +44,5 @@ python scripts/molnet_test_runner.py bace_classification msr2 --task-type classi
 # python scripts/molnet_test_runner.py freesolv msr2 --n 10 --max-epochs 150 --splitter scaffold --project gine-baselines --no-charges --variant no_charges
 
 # python scripts/molnet_test_runner.py doyle msr2 --n 5 --max-epochs 200 --n-hidden-sets 128 --n-elements 128 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32
+
+python scripts/molnet_test_runner.py bbbp msr2 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --no-charges --variant loss --n-hidden-sets 16 --n-hidden-sets 16

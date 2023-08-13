@@ -5,7 +5,7 @@ from rdkit.Chem import (
     HybridizationType,
 )
 
-N_BOND_INVARIANTS = 16
+N_BOND_INVARIANTS = 14
 
 
 def one_hot_encode(prop: Any, vals: Union[int, Iterable[int]]):

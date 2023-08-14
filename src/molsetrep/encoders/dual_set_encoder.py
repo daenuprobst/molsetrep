@@ -63,7 +63,7 @@ class DualSetEncoder(Encoder):
                 fp_bond.append(bond_invariants)
 
             if len(fp_bond) == 0:
-                l = 5 + 202 + 12 + 7 + 12
+                l = 14 + 202 + 12 + 4
 
                 if not self.charges:
                     l -= 2

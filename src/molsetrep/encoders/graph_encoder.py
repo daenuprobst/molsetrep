@@ -1,6 +1,7 @@
 import random
 from typing import Optional, Any, Iterable
 from collections import defaultdict
+from multiprocessing import cpu_count
 
 import torch
 import torch_geometric
@@ -51,10 +52,7 @@ class GraphEncoder:
         return self.mol_to_nx(mol)
 
     def nx_to_pyg(
-        self,
-        G: Any,
-        y: Optional[Any] = None,
-        idx: Optional[int] = None,
+        self, G: Any, y: Optional[Any] = None, idx: Optional[int] = None
     ) -> torch_geometric.data.Data:
         r"""Adapted from torch.utils.from_networkx.
         Converts a :obj:`networkx.Graph` or :obj:`networkx.DiGraph` to a
@@ -137,10 +135,10 @@ class GraphEncoder:
         data["edge_index"] = edge_index.view(2, -1)
 
         if data["edge_index"].shape[1] == 0:
-            s = data["edge_index"].shape[0]
-            edge_attrs = [f"edge_{i}" for i in range(N_BOND_INVARIANTS)]
-            for i in range(N_BOND_INVARIANTS):
-                data[f"edge_{i}"] = torch.tensor([])
+            return None
+            # edge_attrs = [f"edge_{i}" for i in range(N_BOND_INVARIANTS)]
+            # for i in range(N_BOND_INVARIANTS):
+            #     data[f"edge_{i}"] = torch.tensor([])
 
         data = Data.from_dict(data)
 
@@ -197,9 +195,9 @@ class GraphEncoder:
 
         train_data_list = []
         for i, G in enumerate([self.smiles_to_nx(s) for s in smiles]):
-            train_data_list.append(
-                self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
-            )
+            data = self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
+            if data is not None:
+                train_data_list.append(data)
 
         def seed_worker(worker_id):
             worker_seed = torch.initial_seed() % 2**32
@@ -216,7 +214,7 @@ class GraphEncoder:
             drop_last=True,
             worker_init_fn=seed_worker if self.fix_seed else None,
             generator=g if self.fix_seed else None,
-            num_workers=8,
+            num_workers=cpu_count() if cpu_count() < 8 else 8,
         )
 
         return data_loader

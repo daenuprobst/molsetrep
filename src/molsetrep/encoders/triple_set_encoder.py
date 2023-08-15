@@ -1,7 +1,7 @@
 from typing import Iterable, Any, Optional
 
 import torch
-
+from tqdm import tqdm
 from torch.utils.data import TensorDataset
 from mhfp.encoder import MHFPEncoder
 from rdkit import RDLogger
@@ -42,7 +42,7 @@ class TripleSetEncoder(Encoder):
         fps_a = []
         fps_b = []
         fps_g = []
-        for smi in smiles:
+        for smi in tqdm(smiles):
             mol = MolFromSmiles(smi)
 
             if self.charges:
@@ -73,57 +73,59 @@ class TripleSetEncoder(Encoder):
                 fp_bond.append(bond_invariants)
 
             if len(fp_bond) == 0:
-                l = 5 + 202 + 12 + 7 + 8
+                l = 14 + 202 + 12 + 4
 
                 if not self.charges:
                     l -= 2
 
                 fp_bond.append([0] * l)
 
-            # norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
-            # feats = norm_2d_gen.process(smi)[1:]
             fp_global = []
 
-            for ring in GetSSSR(mol):
-                fp_global.append(get_ring_invariants(list(ring), mol))
+            # for ring in GetSSSR(mol):
+            #     fp_global.append(get_ring_invariants(list(ring), mol))
 
-            if len(fp_global) == 0:
-                fp_global.append([0] * 11)
+            # if len(fp_global) == 0:
+            #     fp_global.append([0] * 11)
 
-            # for sh in MHFPEncoder.shingling_from_mol(mol, min_radius=0):
-            #     sh_mol = MolFromSmiles(sh, sanitize=True)
+            # norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
+            # feats = norm_2d_gen.process(smi)[1:]
+            # fp_global.append(feats)
 
-            #     if sh_mol:
-            #         norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
-            #         feats = norm_2d_gen.process(sh)[1:]
-            #         fp_global.append(
-            #             feats
-            #             # [
-            #             #     Descriptors.MolLogP(sh_mol),
-            #             #     rdMolDescriptors.CalcExactMolWt(sh_mol),
-            #             #     rdMolDescriptors.CalcTPSA(sh_mol),
-            #             #     rdMolDescriptors.CalcExactMolWt(sh_mol),
-            #             #     rdMolDescriptors.CalcTPSA(sh_mol),
-            #             #     rdMolDescriptors.CalcPhi(sh_mol),
-            #             #     rdMolDescriptors.CalcKappa1(sh_mol),
-            #             #     rdMolDescriptors.CalcKappa2(sh_mol),
-            #             #     rdMolDescriptors.CalcKappa3(sh_mol),
-            #             #     rdMolDescriptors.CalcChi0n(sh_mol),
-            #             #     rdMolDescriptors.CalcChi0v(sh_mol),
-            #             #     rdMolDescriptors.CalcChi1n(sh_mol),
-            #             #     rdMolDescriptors.CalcChi1v(sh_mol),
-            #             #     rdMolDescriptors.CalcChi2n(sh_mol),
-            #             #     rdMolDescriptors.CalcChi2v(sh_mol),
-            #             # ]
-            #             # + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
-            #             # + one_hot_encode(
-            #             #     rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
-            #             # )
-            #             # + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
-            #             # + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
-            #         )
-            #     else:
-            #         fp_global.append([0] * 200)
+            for sh in MHFPEncoder.shingling_from_mol(mol, min_radius=0):
+                sh_mol = MolFromSmiles(sh, sanitize=True)
+
+                if sh_mol:
+                    norm_2d_gen = rdNormalizedDescriptors.RDKit2DNormalized()
+                    feats = norm_2d_gen.process(sh)[1:]
+                    fp_global.append(
+                        feats
+                        # [
+                        #     Descriptors.MolLogP(sh_mol),
+                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+                        #     rdMolDescriptors.CalcTPSA(sh_mol),
+                        #     rdMolDescriptors.CalcExactMolWt(sh_mol),
+                        #     rdMolDescriptors.CalcTPSA(sh_mol),
+                        #     rdMolDescriptors.CalcPhi(sh_mol),
+                        #     rdMolDescriptors.CalcKappa1(sh_mol),
+                        #     rdMolDescriptors.CalcKappa2(sh_mol),
+                        #     rdMolDescriptors.CalcKappa3(sh_mol),
+                        #     rdMolDescriptors.CalcChi0n(sh_mol),
+                        #     rdMolDescriptors.CalcChi0v(sh_mol),
+                        #     rdMolDescriptors.CalcChi1n(sh_mol),
+                        #     rdMolDescriptors.CalcChi1v(sh_mol),
+                        #     rdMolDescriptors.CalcChi2n(sh_mol),
+                        #     rdMolDescriptors.CalcChi2v(sh_mol),
+                        # ]
+                        # + one_hot_encode(rdMolDescriptors.CalcNumRings(sh_mol), 9)
+                        # + one_hot_encode(
+                        #     rdMolDescriptors.CalcNumAromaticRings(sh_mol), 9
+                        # )
+                        # + rdMolDescriptors.CalcAUTOCORR2D(sh_mol)
+                        # + list(rdMolDescriptors.CalcCrippenDescriptors(sh_mol)),
+                    )
+                else:
+                    fp_global.append([0] * 200)
 
             fps_a.append(fp_atomic)
             fps_b.append(fp_bond)

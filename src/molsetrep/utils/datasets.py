@@ -18,11 +18,50 @@ class CustomDataset:
         )
 
 
+def suzuki_task_loader(name: str, freaturizer=None, **kwargs):
+    return [
+        "yield",
+    ]
+
+
+def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
+    fold_idx = kwargs.get("fold_idx", 0)
+
+    root_path = Path(__file__).resolve().parent
+    suzuki_path = Path(root_path, "../../../data/suzuki_miyaura")
+
+    fold_files = []
+    for file in suzuki_path.glob("*.csv"):
+        fold_files.append(file)
+
+    df = pd.read_csv(fold_files[fold_idx])
+
+    train, test = np.split(
+        df.sample(frac=1.0, random_state=seed),
+        [int(split_ratio * len(df))],
+    )
+
+    # Validate on random sample from train
+    valid = df.sample(frac=0.1)
+
+    tasks = ["yield"]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
 def doyle_task_loader(name: str, freaturizer=None, **kwargs):
-    return ["yield"]
+    return [
+        "yield",
+    ]
 
 
-def doyle_loader(name: str, featurizer=None, seed=42, **kwargs):
+def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     fold_idx = kwargs.get("fold_idx", 0)
 
     root_path = Path(__file__).resolve().parent
@@ -34,10 +73,13 @@ def doyle_loader(name: str, featurizer=None, seed=42, **kwargs):
 
     df = pd.read_csv(fold_files[fold_idx])
 
-    train, valid, test = np.split(
+    train, test = np.split(
         df.sample(frac=1.0, random_state=seed),
-        [int(0.5 * len(df)), int(0.75 * len(df))],
+        [int(split_ratio * len(df))],
     )
+
+    # Validate on random sample from train
+    valid = df.sample(frac=0.1)
 
     tasks = ["yield"]
 

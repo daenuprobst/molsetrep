@@ -22,6 +22,8 @@ from molsetrep.utils.datasets import (
     ocelot_task_loader,
     doyle_loader,
     doyle_task_loader,
+    suzuki_loader,
+    suzuki_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -61,7 +63,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
-    if data_set_name == "doyle":
+    if data_set_name == "doyle" or data_set_name == "suzuki":
         return RXNSetEncoder()
     elif data_set_name == "pdbbind":
         return LigandProtEncoder()
@@ -294,9 +296,10 @@ def main(
     learning_rate: float = 0.001,
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
-    charges: bool = True,
+    charges: bool = False,
     project: Optional[str] = None,
     variant: Optional[str] = None,
+    split_ratio: float = 0.9,
 ):
     featurizer = None
     set_name = None
@@ -311,6 +314,10 @@ def main(
         data_loader = doyle_loader
         task_loader = doyle_task_loader
 
+    if data_set_name == "suzuki":
+        data_loader = suzuki_loader
+        task_loader = suzuki_task_loader
+
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
         set_name = "refined"
@@ -323,6 +330,8 @@ def main(
         label_dtype = torch.float
 
     for task_idx in range(len(tasks)):
+        # if task_idx < 8:
+        #     continue
         for experiment_idx in range(n):
             torch.manual_seed(experiment_idx)
             random.seed(experiment_idx)
@@ -337,6 +346,7 @@ def main(
                 set_name=set_name,
                 seed=experiment_idx,
                 fold_idx=experiment_idx,
+                split_ratio=split_ratio,
             )
 
             class_weights = None
@@ -489,6 +499,8 @@ def main(
                     "dataset": data_set_name,
                     "batch_size": batch_size,
                     "splitter": splitter,
+                    "experiment_idx": experiment_idx,
+                    "split_ratio": split_ratio,
                 }
             )
             wandb_logger.watch(model, log="all")

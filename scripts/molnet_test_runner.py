@@ -24,6 +24,10 @@ from molsetrep.utils.datasets import (
     doyle_task_loader,
     suzuki_loader,
     suzuki_task_loader,
+    uspto_loader,
+    uspto_task_loader,
+    adme_loader,
+    adme_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -63,7 +67,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
-    if data_set_name == "doyle" or data_set_name == "suzuki":
+    if data_set_name in ["doyle", "suzuki", "uspto"]:
         return RXNSetEncoder()
     elif data_set_name == "pdbbind":
         return LigandProtEncoder()
@@ -310,6 +314,10 @@ def main(
         data_loader = ocelot_loader
         task_loader = ocelot_task_loader
 
+    if data_set_name == "adme":
+        data_loader = adme_loader
+        task_loader = adme_task_loader
+
     if data_set_name == "doyle":
         data_loader = doyle_loader
         task_loader = doyle_task_loader
@@ -317,6 +325,10 @@ def main(
     if data_set_name == "suzuki":
         data_loader = suzuki_loader
         task_loader = suzuki_task_loader
+
+    if data_set_name == "uspto":
+        data_loader = uspto_loader
+        task_loader = uspto_task_loader
 
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
@@ -329,7 +341,7 @@ def main(
     if task_type == "regression":
         label_dtype = torch.float
 
-    for task_idx in range(len(tasks)):
+    for task_idx, task_name in enumerate(tasks):
         # if task_idx < 8:
         #     continue
         for experiment_idx in range(n):
@@ -346,8 +358,13 @@ def main(
                 set_name=set_name,
                 seed=experiment_idx,
                 fold_idx=experiment_idx,
+                task_name=task_name,
                 split_ratio=split_ratio,
             )
+
+            # In case tasks are loaded separately (e.g. ADME data)
+            if len(train.y[0]) == 1:
+                task_idx = 0
 
             class_weights = None
             if task_type == "classification" and use_class_weights:
@@ -494,7 +511,7 @@ def main(
             wandb_logger.experiment.config.update(
                 {
                     "model": model_name,
-                    "task": tasks[task_idx],
+                    "task": task_name,
                     "variant": variant,
                     "dataset": data_set_name,
                     "batch_size": batch_size,

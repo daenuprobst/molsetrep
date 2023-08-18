@@ -18,6 +18,72 @@ class CustomDataset:
         )
 
 
+def adme_task_loader(name: str, freaturizer=None, **kwargs):
+    return ["HLM", "hPPB", "MDR1_ER", "RLM", "rPPB", "Sol"]
+
+
+def adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
+    task_name = kwargs.get("task_name", None)
+    print(task_name)
+
+    root_path = Path(__file__).resolve().parent
+    adme_train_file = Path(root_path, f"../../../data/adme/ADME_{task_name}_train.csv")
+    adme_test_file = Path(root_path, f"../../../data/adme/ADME_{task_name}_test.csv")
+
+    train = pd.read_csv(adme_train_file)
+    test = pd.read_csv(adme_test_file)
+
+    # Validate on random sample from train
+    valid = train  # train.sample(frac=0.1)
+
+    tasks = ["activity"]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
+def uspto_task_loader(name: str, freaturizer=None, **kwargs):
+    return [
+        "yield",
+    ]
+
+
+def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
+    root_path = Path(__file__).resolve().parent
+    uspto_path = Path(root_path, "../../../data/uspto/uspto_yields_above.csv.xz")
+
+    df = pd.read_csv(uspto_path)
+
+    train = df[df.split == "train"]
+    test = df[df.split == "test"]
+
+    # train = train.sample(frac=0.5)
+    # test = test.sample(frac=0.5)
+
+    # Validate on random sample from train
+    valid = test.sample(frac=0.1)
+
+    # valid, test = np.split(
+    #     test.sample(frac=1.0, random_state=seed),
+    #     [int(0.5 * len(test))],
+    # )
+
+    tasks = ["yield"]
+
+    return (
+        CustomDataset.from_df(train, "rxn", tasks),
+        CustomDataset.from_df(valid, "rxn", tasks),
+        CustomDataset.from_df(test, "rxn", tasks),
+        tasks,
+        [],
+    )
+
+
 def suzuki_task_loader(name: str, freaturizer=None, **kwargs):
     return [
         "yield",
@@ -35,6 +101,7 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
         fold_files.append(file)
 
     df = pd.read_csv(fold_files[fold_idx])
+    df["smiles"] = df.smiles.str.replace("~", ".")
 
     train, test = np.split(
         df.sample(frac=1.0, random_state=seed),
@@ -42,13 +109,13 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
     )
 
     # Validate on random sample from train
-    valid = df.sample(frac=0.1)
+    # valid = df.sample(frac=0.1)
 
     tasks = ["yield"]
 
     return (
         CustomDataset.from_df(train, "smiles", tasks),
-        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(train, "smiles", tasks),
         CustomDataset.from_df(test, "smiles", tasks),
         tasks,
         [],

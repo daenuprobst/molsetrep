@@ -24,7 +24,7 @@ from rdkit.Chem.AllChem import GetMorganGenerator
 PT = GetPeriodicTable()
 
 from sklearn.preprocessing import StandardScaler
-
+from tqdm import tqdm
 from molsetrep.encoders.encoder import Encoder
 
 
@@ -67,12 +67,12 @@ class RXNSetEncoder(Encoder):
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fpgen = GetMorganGenerator(radius=3, fpSize=2048)
+        fpgen = GetMorganGenerator(radius=3, fpSize=64)
 
         fps_r = []
         fps_p = []
 
-        for smi in rxn_smiles:
+        for smi in tqdm(rxn_smiles):
             reactants, products = get_mols(smi)
 
             fp_ecfp_r = []

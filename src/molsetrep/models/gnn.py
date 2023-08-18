@@ -13,7 +13,12 @@ from torchmetrics.classification import (
     AUROC,
     F1Score,
 )
-from torchmetrics.regression import R2Score, MeanSquaredError, MeanAbsoluteError
+from torchmetrics.regression import (
+    R2Score,
+    MeanSquaredError,
+    MeanAbsoluteError,
+    PearsonCorrCoef,
+)
 
 from molsetrep.models import GINE, MLP
 from molsetrep.metrics import AUPRC
@@ -287,12 +292,15 @@ class LightningGNNRegressor(pl.LightningModule):
 
         # Metrics
         self.train_r2 = R2Score()
+        self.train_pearson = PearsonCorrCoef()
         self.train_rmse = MeanSquaredError(squared=False)
         self.train_mae = MeanAbsoluteError()
         self.val_r2 = R2Score()
+        self.val_pearson = PearsonCorrCoef()
         self.val_rmse = MeanSquaredError(squared=False)
         self.val_mae = MeanAbsoluteError()
         self.test_r2 = R2Score()
+        self.test_pearson = PearsonCorrCoef()
         self.test_rmse = MeanSquaredError(squared=False)
         self.test_mae = MeanAbsoluteError()
 
@@ -317,12 +325,20 @@ class LightningGNNRegressor(pl.LightningModule):
 
         # Metrics
         self.train_r2(out, y)
+        self.train_pearson(out.to(self.device), y.to(self.device))
         self.train_rmse(out, y)
         self.train_mae(out, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log(
             "train/r2", self.train_r2, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "train/pearson",
+            self.train_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
         )
         self.log(
             "train/rmse",
@@ -355,11 +371,19 @@ class LightningGNNRegressor(pl.LightningModule):
 
         # Metrics
         self.val_r2(out, y)
+        self.val_pearson(out.to(self.device), y.to(self.device))
         self.val_rmse(out, y)
         self.val_mae(out, y)
 
         self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log("val/r2", self.val_r2, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log(
+            "val/pearson",
+            self.val_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
         self.log(
             "val/rmse", self.val_rmse, on_step=False, on_epoch=True, batch_size=len(y)
         )
@@ -385,12 +409,20 @@ class LightningGNNRegressor(pl.LightningModule):
 
         # Metrics
         self.test_r2(out, y)
+        self.test_pearson(out.to(self.device), y.to(self.device))
         self.test_rmse(out, y)
         self.test_mae(out, y)
 
         self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log(
             "test/r2", self.test_r2, on_step=False, on_epoch=True, batch_size=len(y)
+        )
+        self.log(
+            "test/pearson",
+            self.test_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
         )
         self.log(
             "test/rmse", self.test_rmse, on_step=False, on_epoch=True, batch_size=len(y)

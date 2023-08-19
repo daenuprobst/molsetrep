@@ -43,4 +43,6 @@
 
 # python scripts/molnet_test_runner.py adme msr2 --monitor loss --n 2 --max-epochs 200 --project gine-baselines
 # python scripts/molnet_test_runner.py adme msr1 --monitor loss --n 2 --max-epochs 200 --project gine-baselines
-python scripts/molnet_test_runner.py adme srgnn --monitor loss --n 2 --max-epochs 600 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32 --project gine-baselines
+# python scripts/molnet_test_runner.py adme srgnn --monitor loss --n 2 --max-epochs 600 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32 --project gine-baselines
+
+python scripts/molnet_test_runner.py adme msr2 --monitor loss --splitter scaffold --n 2 --max-epochs 600 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64

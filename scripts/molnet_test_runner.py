@@ -291,6 +291,7 @@ def main(
     use_class_weights: bool = False,
     max_epochs: int = 50,
     n: int = 1,
+    start_n: int = 0,
     batch_size: int = 64,
     splitter: str = "random",
     task_type: str = "regression",
@@ -345,9 +346,10 @@ def main(
         # if task_idx < 8:
         #     continue
         for experiment_idx in range(n):
-            torch.manual_seed(experiment_idx)
-            random.seed(experiment_idx)
-            np.random.seed(experiment_idx)
+            seed = experiment_idx + start_n
+            torch.manual_seed(seed)
+            random.seed(seed)
+            np.random.seed(seed)
 
             train, valid, test, _, transforms = data_loader(
                 data_set_name,
@@ -356,7 +358,7 @@ def main(
                 transformers=[],
                 featurizer=featurizer,
                 set_name=set_name,
-                seed=experiment_idx,
+                seed=seed,
                 fold_idx=experiment_idx,
                 task_name=task_name,
                 split_ratio=split_ratio,

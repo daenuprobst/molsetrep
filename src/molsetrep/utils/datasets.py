@@ -34,7 +34,7 @@ def adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     test = pd.read_csv(adme_test_file)
 
     # Validate on random sample from train
-    valid = train  # train.sample(frac=0.1)
+    valid = test  # train.sample(frac=0.1)
 
     tasks = ["activity"]
 

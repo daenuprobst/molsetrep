@@ -8,6 +8,8 @@ import torch_geometric
 import numpy as np
 import networkx as nx
 
+from tqdm import tqdm
+
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from rdkit.Chem.rdchem import Mol
@@ -194,7 +196,9 @@ class GraphEncoder:
             bond_attrs = []
 
         train_data_list = []
-        for i, G in enumerate([self.smiles_to_nx(s) for s in smiles]):
+        for i, G in tqdm(
+            enumerate([self.smiles_to_nx(s) for s in smiles]), total=len(smiles)
+        ):
             data = self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
             if data is not None:
                 train_data_list.append(data)

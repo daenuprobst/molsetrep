@@ -356,7 +356,7 @@ def main(
             random.seed(seed)
             np.random.seed(seed)
 
-            train, valid, test, _, transforms = data_loader(
+            train, valid, test, _, __builtins__ = data_loader(
                 data_set_name,
                 splitter=splitter,
                 reload=False,
@@ -365,6 +365,7 @@ def main(
                 set_name=set_name,
                 seed=seed,
                 fold_idx=experiment_idx,
+                n_folds=n,
                 task_name=task_name,
                 split_ratio=split_ratio,
             )

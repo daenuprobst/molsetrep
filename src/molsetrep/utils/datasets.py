@@ -198,7 +198,6 @@ def ocelot_task_loader(name: str, freaturizer=None, **kwargs):
     df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)
     return col_names[1:-1]
-    # return ["homo", "lumo"]
 
 
 def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
@@ -206,11 +205,14 @@ def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)
     tasks = col_names[1:-1]
-    # tasks = ["homo", "lumo"]
 
-    train, valid, test = np.split(
-        df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df)), int(0.9 * len(df))]
-    )
+    # train, valid, test = np.split(
+    #     df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df)), int(0.9 * len(df))]
+    # )
+
+    train, test = np.split(df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df))])
+
+    valid = train.sample(frac=0.2)
 
     return (
         CustomDataset.from_df(train, "smiles", tasks),

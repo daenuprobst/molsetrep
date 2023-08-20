@@ -48,7 +48,8 @@
 # python scripts/molnet_test_runner.py adme msr2 --monitor loss --splitter scaffold --n 2 --max-epochs 900 --project gine-baselines
 # python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffold --n 2 --max-epochs 900 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64
 
-python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffold --n 4 --max-epochs 250 --project gine-baselines --variant v2 --n-hidden-sets 64 --n-hidden-sets 64 --batch-size 16
+# python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffold --n 4 --max-epochs 250 --project gine-baselines --variant v2 --n-hidden-sets 64 --n-hidden-sets 64 --batch-size 16
+# python scripts/molnet_test_runner.py adme msr2 --monitor loss --splitter scaffold --n 4 --max-epochs 250 --project gine-baselines --variant v2 --n-hidden-sets 64 --n-hidden-sets 64 --batch-size 16
 
 
 
@@ -64,3 +65,5 @@ python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffol
 
 # python scripts/molnet_test_runner.py doyle_test msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --variant no-shuffle --n-hidden-sets 128 --n-hidden-sets 128 --n-elements 16 --n-elements 16 --n-hidden-channels 128 --n-hidden-channels 32
 
+
+python scripts/molnet_test_runner.py ocelot srgnn --splitter scaffold --n 5 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --variant kfold

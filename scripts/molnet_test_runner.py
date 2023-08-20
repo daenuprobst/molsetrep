@@ -21,6 +21,7 @@ from molsetrep.utils.datasets import (
     ocelot_loader,
     ocelot_task_loader,
     doyle_loader,
+    doyle_test_loader,
     doyle_task_loader,
     suzuki_loader,
     suzuki_task_loader,
@@ -67,7 +68,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
-    if data_set_name in ["doyle", "suzuki", "uspto"]:
+    if data_set_name in ["doyle", "doyle_test", "suzuki", "uspto"]:
         return RXNSetEncoder()
     elif data_set_name == "pdbbind":
         return LigandProtEncoder()
@@ -321,6 +322,10 @@ def main(
 
     if data_set_name == "doyle":
         data_loader = doyle_loader
+        task_loader = doyle_task_loader
+
+    if data_set_name == "doyle_test":
+        data_loader = doyle_test_loader
         task_loader = doyle_task_loader
 
     if data_set_name == "suzuki":

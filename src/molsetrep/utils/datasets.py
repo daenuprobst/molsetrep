@@ -34,7 +34,7 @@ def adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     test = pd.read_csv(adme_test_file)
 
     # Validate on random sample from train
-    valid = test  # train.sample(frac=0.1)
+    valid = train.sample(frac=0.1)
 
     tasks = ["activity"]
 
@@ -101,12 +101,15 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
         fold_files.append(file)
 
     df = pd.read_csv(fold_files[fold_idx])
-    df["smiles"] = df.smiles.str.replace("~", ".")
+    df["smiles"] = df.smiles.str.replace("~", "")
 
     train, test = np.split(
-        df.sample(frac=1.0, random_state=seed),
+        df,
         [int(split_ratio * len(df))],
     )
+
+    print(len(train))
+    print(len(test))
 
     # Validate on random sample from train
     # valid = df.sample(frac=0.1)
@@ -116,6 +119,37 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
     return (
         CustomDataset.from_df(train, "smiles", tasks),
         CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
+def doyle_test_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
+    fold_idx = kwargs.get("fold_idx", 0)
+
+    root_path = Path(__file__).resolve().parent
+    doyle_path = Path(root_path, "../../../data/doyle")
+
+    fold_files = []
+    for file in doyle_path.glob("*Test*.csv"):
+        fold_files.append(file)
+
+    df = pd.read_csv(fold_files[fold_idx])
+
+    train, test = np.split(
+        df,
+        [3058],
+    )
+
+    # Validate on random sample from train
+    valid = train  # df.sample(frac=0.1)
+
+    tasks = ["yield"]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
         CustomDataset.from_df(test, "smiles", tasks),
         tasks,
         [],
@@ -135,13 +169,13 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
     doyle_path = Path(root_path, "../../../data/doyle")
 
     fold_files = []
-    for file in doyle_path.glob("*.csv"):
+    for file in doyle_path.glob("*FullCV*.csv"):
         fold_files.append(file)
 
     df = pd.read_csv(fold_files[fold_idx])
 
     train, test = np.split(
-        df.sample(frac=1.0, random_state=seed),
+        df,
         [int(split_ratio * len(df))],
     )
 

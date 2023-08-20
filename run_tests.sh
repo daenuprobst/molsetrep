@@ -43,6 +43,24 @@
 
 # python scripts/molnet_test_runner.py adme msr2 --monitor loss --n 2 --max-epochs 200 --project gine-baselines
 # python scripts/molnet_test_runner.py adme msr1 --monitor loss --n 2 --max-epochs 200 --project gine-baselines
-# python scripts/molnet_test_runner.py adme srgnn --monitor loss --n 2 --max-epochs 600 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32 --project gine-baselines
+# python scripts/molnet_test_runner.py adme srgnn --monitor loss --n 1 --start-n 3 --max-epochs 900 --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32 --project gine-baselines
 
-python scripts/molnet_test_runner.py adme msr2 --monitor loss --splitter scaffold --n 2 --max-epochs 600 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64
+# python scripts/molnet_test_runner.py adme msr2 --monitor loss --splitter scaffold --n 2 --max-epochs 900 --project gine-baselines
+# python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffold --n 2 --max-epochs 900 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64
+
+python scripts/molnet_test_runner.py adme msr1 --monitor loss --splitter scaffold --n 4 --max-epochs 250 --project gine-baselines --variant v2 --n-hidden-sets 64 --n-hidden-sets 64 --batch-size 16
+
+
+
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.7 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.5 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.3 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.2 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.1 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.05 --variant no-shuffle
+# python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --split-ratio 0.025 --variant no-shuffle
+
+# python scripts/molnet_test_runner.py suzuki msr2 --splitter scaffold --n 1 --start-n 6 --max-epochs 250 --project gine-baselines --split-ratio 0.7 --variant no-shuffle
+
+# python scripts/molnet_test_runner.py doyle_test msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --variant no-shuffle --n-hidden-sets 128 --n-hidden-sets 128 --n-elements 16 --n-elements 16 --n-hidden-channels 128 --n-hidden-channels 32
+

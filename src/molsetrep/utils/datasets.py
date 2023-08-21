@@ -206,9 +206,8 @@ def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     col_names = list(df.columns)
     tasks = col_names[1:-1]
 
-    # train, valid, test = np.split(
-    #     df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df)), int(0.9 * len(df))]
-    # )
+    # For some reason one smiles entry is nan when running on colab
+    df = df.dropna()
 
     train, test = np.split(df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df))])
 

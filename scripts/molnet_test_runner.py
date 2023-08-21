@@ -66,6 +66,8 @@ RDLogger.DisableLog("rdApp.*")
 app = typer.Typer(pretty_exceptions_enable=False)
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
+# torch.set_float32_matmul_precision("medium")
+
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
     if data_set_name in ["doyle", "doyle_test", "suzuki", "uspto"]:
@@ -306,6 +308,7 @@ def main(
     project: Optional[str] = None,
     variant: Optional[str] = None,
     split_ratio: float = 0.9,
+    task: Optional[List[str]] = None,
 ):
     featurizer = None
     set_name = None
@@ -348,6 +351,10 @@ def main(
         label_dtype = torch.float
 
     for task_idx, task_name in enumerate(tasks):
+        if task is not None and len(task) > 0 and task_name not in task:
+            continue
+
+        print(f"Running task '{task_name}' ({task_idx})")
         # if task_idx < 8:
         #     continue
         for experiment_idx in range(n):

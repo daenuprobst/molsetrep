@@ -13,21 +13,26 @@
 # python scripts/molnet_test_runner.py clintox msr1 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --n-hidden-sets 64 --n-hidden-sets 64 --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py clintox msr2 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64 --no-charges --variant no_charges
 
-# python scripts/molnet_test_runner.py hiv gnn --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --no-charges --variant no_charges
-# python scripts/molnet_test_runner.py hiv srgnn --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32 --no-charges --variant no_charges
-# python scripts/molnet_test_runner.py hiv msr1 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --n-hidden-sets 64 --n-hidden-sets 64 --no-charges --variant no_charges
-# python scripts/molnet_test_runner.py hiv msr2 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64 --no-charges --variant no_charges
-
-
-
-
-
-
 
 # python scripts/molnet_test_runner.py ocelot srgnn --splitter scaffold --n 2 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py ocelot gnn --splitter scaffold --n 2 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --no-charges --variant no_charges
 # python scripts/molnet_test_runner.py ocelot msr1 --splitter scaffold --n 2 --max-epochs 150 --project gine-baselines --no-charges --variant no_charges --n-hidden-sets 64 --n-hidden-sets 64
 # python scripts/molnet_test_runner.py ocelot msr2 --splitter scaffold --n 2 --max-epochs 250 --project gine-baselines --no-charges --variant no_charges --n-hidden-sets 64 --n-hidden-sets 64
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # python scripts/molnet_test_runner.py doyle msr2 --splitter scaffold --n 2 --max-epochs 250 --project gine-baselines --n-hidden-sets 32 --n-hidden-sets 32 --n-elements 16 --n-elements 16 --n-hidden-channels 128 --n-hidden-channels 32 --no-charges --variant fp-2048 --split-ratio 0.5
@@ -66,4 +71,14 @@
 # python scripts/molnet_test_runner.py doyle_test msr2 --splitter scaffold --n 1 --max-epochs 250 --project gine-baselines --variant no-shuffle --n-hidden-sets 128 --n-hidden-sets 128 --n-elements 16 --n-elements 16 --n-hidden-channels 128 --n-hidden-channels 32
 
 
-python scripts/molnet_test_runner.py ocelot srgnn --splitter scaffold --n 5 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --variant kfold
+# python scripts/molnet_test_runner.py ocelot srgnn --splitter scaffold --n 5 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --variant kfold --task hr --task cr2 --task cr1
+
+
+# python scripts/molnet_test_runner.py hiv gnn --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32
+# python scripts/molnet_test_runner.py hiv srgnn --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 150 --project gine-baselines --n-hidden-sets 128 --n-elements 128 --n-hidden-channels 64 --n-hidden-channels 32
+# python scripts/molnet_test_runner.py hiv msr1 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --no-charges --n-hidden-sets 64 --n-hidden-sets 64
+# python scripts/molnet_test_runner.py hiv msr2 --task-type classification --monitor loss --splitter scaffold --n 10 --max-epochs 250 --project gine-baselines --n-hidden-sets 64 --n-hidden-sets 64
+
+# python scripts/molnet_test_runner.py bace_classification srgnn --task-type classification --monitor loss --splitter scaffold --n 3 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --variant test
+
+python scripts/molnet_test_runner.py lipo srgnn --monitor loss --splitter scaffold --n 3 --max-epochs 150 --project gine-baselines --n-hidden-channels 64 --n-hidden-channels 32 --variant v2

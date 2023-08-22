@@ -102,6 +102,7 @@ def get_model(
     scaler: Optional[any] = None,
     set_layer: str = "setrep",
     learning_rate: float = 0.001,
+    n_layers: int = 6,
     **kwargs,
 ) -> torch.nn.Module:
     if model_name == "mol2vec":
@@ -150,7 +151,7 @@ def get_model(
     elif model_name == "gnn":
         if task_type == "classification":
             return LightningGNNClassifier(
-                6,
+                n_layers,
                 d[0],
                 d[1],
                 n_classes,
@@ -161,7 +162,7 @@ def get_model(
             )
         elif task_type == "regression":
             return LightningGNNRegressor(
-                6, d[0], d[1], n_hidden_channels, learning_rate, scaler, **kwargs
+                n_layers, d[0], d[1], n_hidden_channels, learning_rate, scaler, **kwargs
             )
         else:
             raise ValueError(
@@ -172,7 +173,7 @@ def get_model(
             return LightningSRGNNClassifier(
                 n_hidden_sets,
                 n_elements,
-                6,
+                n_layers,
                 d[0],
                 d[1],
                 n_classes,
@@ -186,7 +187,7 @@ def get_model(
             return LightningSRGNNRegressor(
                 n_hidden_sets,
                 n_elements,
-                6,
+                n_layers,
                 d[0],
                 d[1],
                 n_hidden_channels,
@@ -301,6 +302,7 @@ def main(
     n_hidden_sets: Optional[List[int]] = None,
     n_elements: Optional[List[int]] = None,
     n_hidden_channels: Optional[List[int]] = None,
+    n_layers: int = 6,
     learning_rate: float = 0.001,
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
@@ -502,6 +504,7 @@ def main(
                 scaler=scaler,
                 n_hidden_channels=n_hidden_channels,
                 set_layer=set_layer,
+                n_layers=n_layers,
             )
 
             if monitor is None:

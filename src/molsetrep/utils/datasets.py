@@ -127,15 +127,12 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
 
 def doyle_test_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     fold_idx = kwargs.get("fold_idx", 0)
+    fold_idx = fold_idx % 4
 
     root_path = Path(__file__).resolve().parent
     doyle_path = Path(root_path, "../../../data/doyle")
 
-    fold_files = []
-    for file in doyle_path.glob("*Test*.csv"):
-        fold_files.append(file)
-
-    df = pd.read_csv(fold_files[fold_idx])
+    df = pd.read_csv(Path(doyle_path, f"doyle_Test{fold_idx + 1}.csv"))
 
     train, test = np.split(
         df,
@@ -143,7 +140,7 @@ def doyle_test_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kw
     )
 
     # Validate on random sample from train
-    valid = train  # df.sample(frac=0.1)
+    valid = df.sample(frac=0.1)
 
     tasks = ["yield"]
 

@@ -1,3 +1,4 @@
+import pickle
 from typing import List
 from dataclasses import dataclass
 from pathlib import Path
@@ -84,6 +85,49 @@ def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
     )
 
 
+def az_task_loader(name: str, freaturizer=None, **kwargs):
+    return [
+        "yield",
+    ]
+
+
+def az_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
+    fold_idx = kwargs.get("fold_idx", 0)
+
+    root_path = Path(__file__).resolve().parent
+    az_path = Path(root_path, "../../../data/az")
+    splits = pickle.load(open(Path(az_path, "train_test_idxs.pickle"), "rb"))
+
+    df = pd.read_csv(Path(az_path, "az_no_rdkit.csv"))
+    df["smiles"] = (
+        df.reactant_smiles
+        + "."
+        + df.solvent_smiles
+        + "."
+        + df.base_smiles
+        + ">>"
+        + df.product_smiles
+    )
+
+    train, test = np.split(
+        df,
+        [int(split_ratio * len(df))],
+    )
+
+    # Validate on random sample from train
+    valid = df.sample(frac=0.1)
+
+    tasks = ["yield"]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
 def suzuki_task_loader(name: str, freaturizer=None, **kwargs):
     return [
         "yield",
@@ -107,9 +151,6 @@ def suzuki_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
         df,
         [int(split_ratio * len(df))],
     )
-
-    print(len(train))
-    print(len(test))
 
     # Validate on random sample from train
     # valid = df.sample(frac=0.1)
@@ -140,7 +181,7 @@ def doyle_test_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kw
     )
 
     # Validate on random sample from train
-    valid = df.sample(frac=0.1)
+    valid = train.sample(frac=0.1)
 
     tasks = ["yield"]
 
@@ -177,7 +218,7 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
     )
 
     # Validate on random sample from train
-    valid = df.sample(frac=0.1)
+    valid = test.sample(frac=0.1)
 
     tasks = ["yield"]
 

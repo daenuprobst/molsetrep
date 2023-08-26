@@ -67,7 +67,7 @@ def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
     # test = test.sample(frac=0.5)
 
     # Validate on random sample from train
-    valid = test.sample(frac=0.1)
+    valid = train.sample(frac=0.1)
 
     # valid, test = np.split(
     #     test.sample(frac=1.0, random_state=seed),
@@ -115,7 +115,7 @@ def az_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     )
 
     # Validate on random sample from train
-    valid = df.sample(frac=0.1)
+    valid = train.sample(frac=0.1)
 
     tasks = ["yield"]
 
@@ -218,7 +218,7 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
     )
 
     # Validate on random sample from train
-    valid = test.sample(frac=0.1)
+    valid = train.sample(frac=0.1)
 
     tasks = ["yield"]
 

@@ -43,6 +43,7 @@ from molsetrep.encoders import (
     Mol2VecEncoder,
     Mol2SetEncoder,
     RXNSetEncoder,
+    RXNGraphEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -72,7 +73,15 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
 
 def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
-    if data_set_name in ["doyle", "doyle_test", "az", "suzuki", "uspto"]:
+    if data_set_name in [
+        "doyle",
+        "doyle_test",
+        "az",
+        "suzuki",
+        "uspto",
+    ] and model_name in ["gnn", "srgnn"]:
+        return RXNGraphEncoder(charges=charges)
+    elif data_set_name in ["doyle", "doyle_test", "az", "suzuki", "uspto"]:
         return RXNSetEncoder()
     elif data_set_name == "pdbbind":
         return LigandProtEncoder()

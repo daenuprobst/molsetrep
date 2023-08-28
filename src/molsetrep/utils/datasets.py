@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import deepchem.molnet as mn
 import pandas as pd
+from sklearn.model_selection import KFold
 
 
 @dataclass
@@ -98,6 +99,9 @@ def az_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     az_path = Path(root_path, "../../../data/az")
     splits = pickle.load(open(Path(az_path, "train_test_idxs.pickle"), "rb"))
 
+    train_ids = splits["train_idx"][fold_idx + 1]
+    test_ids = splits["test_idx"][fold_idx + 1]
+
     df = pd.read_csv(Path(az_path, "az_no_rdkit.csv"))
     df["smiles"] = (
         df.reactant_smiles
@@ -109,10 +113,8 @@ def az_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
         + df.product_smiles
     )
 
-    train, test = np.split(
-        df,
-        [int(split_ratio * len(df))],
-    )
+    train = df.iloc[train_ids]
+    test = df.iloc[test_ids]
 
     # Validate on random sample from train
     valid = train.sample(frac=0.1)
@@ -239,6 +241,7 @@ def ocelot_task_loader(name: str, freaturizer=None, **kwargs):
 
 
 def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
+    fold_idx = kwargs.get("fold_idx", 0)
     root_path = Path(__file__).resolve().parent
     df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)
@@ -247,7 +250,12 @@ def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     # For some reason one smiles entry is nan when running on colab
     df = df.dropna()
 
-    train, test = np.split(df.sample(frac=1.0, random_state=seed), [int(0.8 * len(df))])
+    # Keep the same random state
+    kf = KFold(n_splits=5)
+    train_ids, test_ids = list(kf.split(df))[fold_idx]
+
+    train = df.iloc[train_ids]
+    test = df.iloc[test_ids]
 
     valid = train.sample(frac=0.2)
 

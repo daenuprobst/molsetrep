@@ -6,6 +6,7 @@ import numpy as np
 import deepchem.molnet as mn
 import pandas as pd
 from sklearn.model_selection import KFold
+from torch_geometric.datasets import LRGBDataset
 
 
 @dataclass
@@ -20,7 +21,10 @@ class CustomDataset:
         )
 
 
-def adme_task_loader(name: str, freaturizer=None, **kwargs):
+# TODO Add Peptide-func data set loader. See https://arxiv.org/pdf/2206.08164.pdf
+
+
+def adme_task_loader(name: str, featurizer=None, **kwargs):
     return ["HLM", "hPPB", "MDR1_ER", "RLM", "rPPB", "Sol"]
 
 
@@ -49,7 +53,7 @@ def adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     )
 
 
-def uspto_task_loader(name: str, freaturizer=None, **kwargs):
+def uspto_task_loader(name: str, featurizer=None, **kwargs):
     return [
         "yield",
     ]
@@ -64,16 +68,8 @@ def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
     train = df[df.split == "train"]
     test = df[df.split == "test"]
 
-    # train = train.sample(frac=0.5)
-    # test = test.sample(frac=0.5)
-
     # Validate on random sample from train
     valid = train.sample(frac=0.1)
-
-    # valid, test = np.split(
-    #     test.sample(frac=1.0, random_state=seed),
-    #     [int(0.5 * len(test))],
-    # )
 
     tasks = ["yield"]
 
@@ -86,7 +82,7 @@ def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
     )
 
 
-def az_task_loader(name: str, freaturizer=None, **kwargs):
+def az_task_loader(name: str, featurizer=None, **kwargs):
     return [
         "yield",
     ]
@@ -130,7 +126,7 @@ def az_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     )
 
 
-def suzuki_task_loader(name: str, freaturizer=None, **kwargs):
+def suzuki_task_loader(name: str, featurizer=None, **kwargs):
     return [
         "yield",
     ]
@@ -196,7 +192,7 @@ def doyle_test_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kw
     )
 
 
-def doyle_task_loader(name: str, freaturizer=None, **kwargs):
+def doyle_task_loader(name: str, featurizer=None, **kwargs):
     return [
         "yield",
     ]
@@ -233,7 +229,7 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
     )
 
 
-def ocelot_task_loader(name: str, freaturizer=None, **kwargs):
+def ocelot_task_loader(name: str, featurizer=None, **kwargs):
     root_path = Path(__file__).resolve().parent
     df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)

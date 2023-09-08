@@ -322,6 +322,7 @@ def main(
     variant: Optional[str] = None,
     split_ratio: float = 0.9,
     task: Optional[List[str]] = None,
+    ckpt_path: str = "best",
 ):
     featurizer = None
     set_name = None
@@ -565,7 +566,7 @@ def main(
             trainer.fit(
                 model, train_dataloaders=train_loader, val_dataloaders=valid_loader
             )
-            trainer.test(ckpt_path="best", dataloaders=test_loader)
+            trainer.test(ckpt_path=ckpt_path, dataloaders=test_loader)
 
             wandb_logger.finalize("success")
             wandb_finish()

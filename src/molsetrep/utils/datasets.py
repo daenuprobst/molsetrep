@@ -257,7 +257,7 @@ def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     train = df.iloc[train_ids]
     test = df.iloc[test_ids]
 
-    valid = train.sample(frac=0.2)
+    valid = test  # train.sample(frac=0.2)
 
     return (
         CustomDataset.from_df(train, "smiles", tasks),

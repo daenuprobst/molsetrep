@@ -12,7 +12,7 @@
 ############
 # Doyle Test
 ############
-# python scripts/molnet_test_runner.py doyle_test msr2 --monitor loss --splitter scaffold --n 12 --max-epochs 450 --project rxn-final --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4 --batch-size 16
+python scripts/molnet_test_runner.py doyle_test msr2 --monitor loss --splitter scaffold --n 12 --max-epochs 150 --project rxn-final --n-hidden-sets 32 --n-hidden-sets 32 --n-elements 4 --n-elements 4 --batch-size 16 --learning-rate 0.01 --variant ttfp-32-4
 
 ############
 # AZ

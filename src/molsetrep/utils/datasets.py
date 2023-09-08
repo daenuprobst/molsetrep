@@ -21,7 +21,7 @@ class CustomDataset:
         )
 
 
-# TODO Add Peptide-func data set loader
+# TODO Add Peptide-func data set loader. See https://arxiv.org/pdf/2206.08164.pdf
 
 
 def adme_task_loader(name: str, featurizer=None, **kwargs):

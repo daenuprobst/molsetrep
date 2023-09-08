@@ -6,6 +6,7 @@ import numpy as np
 import deepchem.molnet as mn
 import pandas as pd
 from sklearn.model_selection import KFold
+from torch_geometric.datasets import LRGBDataset
 
 
 @dataclass
@@ -18,6 +19,9 @@ class CustomDataset:
         return CustomDataset(
             df[ids_column].to_numpy(), df[df.columns.intersection(y_columns)].to_numpy()
         )
+
+
+# TODO Add Peptide-func data set loader
 
 
 def adme_task_loader(name: str, featurizer=None, **kwargs):

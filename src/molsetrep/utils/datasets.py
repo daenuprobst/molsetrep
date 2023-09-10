@@ -24,6 +24,20 @@ class CustomDataset:
 # TODO Add Peptide-func data set loader. See https://arxiv.org/pdf/2206.08164.pdf
 
 
+def lrgb_task_loader(name: str, featurizer=None, **kwargs):
+    # Always store the data in data_tmp as it is in .gitignore
+    file_dir = Path(__file__).resolve().parent()
+    root = str(Path(file_dir, "data_tmp"))
+
+    train = LRGBDataset(root=root, name=name, split="train")
+    valid = LRGBDataset(root=root, name=name, split="val")
+    test = LRGBDataset(root=root, name=name, split="test")
+
+
+def lrgb_loader(name: str, **kwargs):
+    ...
+
+
 def adme_task_loader(name: str, featurizer=None, **kwargs):
     return ["HLM", "hPPB", "MDR1_ER", "RLM", "rPPB", "Sol"]
 
@@ -217,6 +231,8 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
 
     # Validate on random sample from train
     valid = train.sample(frac=0.1)
+    if len(valid) < 16:
+        valid = train.sample(n=16)
 
     tasks = ["yield"]
 

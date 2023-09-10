@@ -1,30 +1,15 @@
 from typing import Iterable, Any, Optional, Union
 
 import torch
-import numpy as np
 
 from torch.utils.data import TensorDataset
-from mhfp.encoder import MHFPEncoder
 from rdkit import RDLogger
 from rdkit.Chem.AllChem import MolFromSmiles
-from rdkit.Chem import (
-    rdMolDescriptors,
-    MolFromSmiles,
-    GetSymmSSSR,
-    Descriptors,
-    MACCSkeys,
-    BondType,
-    HybridizationType,
-    GetPeriodicTable,
-)
+from rdkit.Chem import MolFromSmiles
 
-from rdkit.Chem.AllChem import GetMorganGenerator, GetTopologicalTorsionGenerator
+from rdkit.Chem.AllChem import GetMorganGenerator
 
-PT = GetPeriodicTable()
-
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-from mhfp.encoder import MHFPEncoder
 from molsetrep.encoders.encoder import Encoder
 
 
@@ -67,8 +52,7 @@ class RXNSetEncoder(Encoder):
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fpgen = GetMorganGenerator(radius=3, fpSize=2048, includeChirality=True)
-        ttgen = GetTopologicalTorsionGenerator(fpSize=2048)
+        fpgen = GetMorganGenerator(radius=3, fpSize=256, includeChirality=True)
 
         fps_r = []
         fps_p = []
@@ -81,15 +65,11 @@ class RXNSetEncoder(Encoder):
 
             for mol in reactants:
                 if mol is not None:
-                    fp_ecfp_r.append(
-                        fpgen.GetFingerprint(mol) + ttgen.GetFingerprint(mol)
-                    )
+                    fp_ecfp_r.append(fpgen.GetFingerprint(mol))
 
             for mol in products:
                 if mol is not None:
-                    fp_ecfp_p.append(
-                        fpgen.GetFingerprint(mol) + ttgen.GetFingerprint(mol)
-                    )
+                    fp_ecfp_p.append(fpgen.GetFingerprint(mol))
 
             fps_r.append(fp_ecfp_r)
             fps_p.append(fp_ecfp_p)

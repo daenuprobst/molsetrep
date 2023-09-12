@@ -31,6 +31,8 @@ from molsetrep.utils.datasets import (
     uspto_task_loader,
     adme_loader,
     adme_task_loader,
+    custom_molnet_loader,
+    custom_molnet_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -360,6 +362,10 @@ def main(
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
         set_name = "refined"
+
+    if splitter == "custom-scaffold":
+        data_loader = custom_molnet_loader
+        task_loader = custom_molnet_task_loader
 
     tasks = task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
     print(f'\nDataset "{data_set_name}" contains {len(tasks)} task(s).')

@@ -1,5 +1,3 @@
-from molsetrep.encoders.secmqnfp_encoder import SECMQNFPEncoder
-from molsetrep.encoders.secfp_encoder import SECFPEncoder
 from molsetrep.encoders.single_set_encoder import SingleSetEncoder
 from molsetrep.encoders.dual_set_encoder import DualSetEncoder
 from molsetrep.encoders.triple_set_encoder import TripleSetEncoder

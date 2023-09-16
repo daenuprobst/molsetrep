@@ -1,11 +1,9 @@
 from typing import Optional
 import torch
-import networkx as nx
-from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Linear, Dropout
+from torch.nn import Parameter, Linear, BatchNorm1d, LeakyReLU, Dropout
 from torch.nn.functional import log_softmax
 from torch_geometric.nn import GIN
-from torch_geometric.utils import unbatch, to_networkx
-from torch_geometric.data import Batch
+from torch_geometric.utils import unbatch
 from molsetrep.models.gine import GINE
 
 

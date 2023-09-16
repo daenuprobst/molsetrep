@@ -76,6 +76,20 @@
 # python scripts/molnet_test_runner.py bace_classification msr1 --task-type classification --monitor loss --splitter scaffold --n 3 --max-epochs 250 --project moleculenet-final --n-hidden-sets 64 --n-elements 4
 # python scripts/molnet_test_runner.py bace_classification msr2 --task-type classification --monitor loss --splitter scaffold --n 3 --max-epochs 250 --project moleculenet-final --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
 
+# python scripts/molnet_test_runner.py bace msr1 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py bace msr2 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+# python scripts/molnet_test_runner.py bace gnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+# python scripts/molnet_test_runner.py bace srgnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+
+############
+# HIV
+############
+# python scripts/molnet_test_runner.py hiv msr1 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py hiv msr2 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+# python scripts/molnet_test_runner.py hiv gnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+# python scripts/molnet_test_runner.py hiv srgnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+
+
 ############
 # ClinTox
 ############
@@ -113,4 +127,35 @@
 # python scripts/molnet_test_runner.py hiv srgnn --task-type classification --monitor loss --splitter scaffold --n 1 --start-n 2 --max-epochs 150 --project moleculenet-final --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
 # python scripts/molnet_test_runner.py hiv msr2 --task-type classification --monitor loss --splitter scaffold --n 3 --max-epochs 250 --project moleculenet-final --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
 
-python scripts/molnet_test_runner.py qm8 msr2 --monitor loss --splitter scaffold --n 3 --max-epochs 250 --project moleculenet-final --n-hidden-sets 64 --n-elements 4
+############
+# Tox21
+############
+# python scripts/molnet_test_runner.py tox21 msr1 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py tox21 msr2 --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+# python scripts/molnet_test_runner.py tox21 gnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+# python scripts/molnet_test_runner.py tox21 srgnn --task-type classification --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+
+############
+# QM7
+############
+# python scripts/molnet_test_runner.py qm7 msr1 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py qm7 msr2 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+# python scripts/molnet_test_runner.py qm7 gnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+# python scripts/molnet_test_runner.py qm7 srgnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+
+############
+# QM8
+############
+# python scripts/molnet_test_runner.py qm8 msr1 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py qm8 msr2 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+python scripts/molnet_test_runner.py qm8 gnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8  --task E1-CAM --task E2-CAM --task f1-CAM --task f2-CAM
+# python scripts/molnet_test_runner.py qm8 srgnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+
+
+############
+# QM9
+############
+# python scripts/molnet_test_runner.py qm9 msr1 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-elements 4
+# python scripts/molnet_test_runner.py qm7 msr2 --monitor loss --splitter custom-scaffold --n 3 --max-epochs 250 --project moleculenet-custom-splitter --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4
+# python scripts/molnet_test_runner.py qm7 gnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
+# python scripts/molnet_test_runner.py qm7 srgnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --project moleculenet-custom-splitter --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8

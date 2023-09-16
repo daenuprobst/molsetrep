@@ -184,12 +184,17 @@ def custom_molnet_task_loader(name: str, featurizer=None, **kwargs):
 
 
 def custom_molnet_loader(
-    name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs
+    name: str, featurizer=None, split_ratio=0.7, seed=42, task_name=None, **kwargs
 ):
     root_path = Path(__file__).resolve().parent
     file_path = Path(root_path, f"../../../data/moleculenet/{name}.csv.xz")
 
     df = pd.read_csv(file_path)
+
+    # Drop NAs. Needed in Tox21
+    if name in ["tox21"]:
+        df = df.replace("", np.nan)
+        df = df.dropna(subset=[task_name])
 
     train_ids, valid_ids, test_ids = scaffold_split(df, 0.1, 0.1, seed)
 

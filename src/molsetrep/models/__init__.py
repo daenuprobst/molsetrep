@@ -1,8 +1,5 @@
 from molsetrep.models.gnn_set_rep_classifier import GNNSetRepClassifier
 from molsetrep.models.gnn_set_rep_regressor import GNNSetRepRegressor
-from molsetrep.models.gnn_set_rep_classifier_substruct import (
-    GNNSetRepClassifierSubstruct,
-)
 from molsetrep.models.gine import GINE
 from molsetrep.models.set_rep import SetRep
 from molsetrep.models.set_transformer import DeepSet, SetTransformer
@@ -42,9 +39,4 @@ from molsetrep.models.sr_gnn import (
     SRGNNRegressor,
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
-)
-
-from molsetrep.models.mol2vec import (
-    LightningMol2VecClassifier,
-    LightningMol2VecRegressor,
 )

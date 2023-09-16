@@ -52,7 +52,7 @@ class RXNSetEncoder(Encoder):
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fpgen = GetMorganGenerator(radius=3, fpSize=256, includeChirality=True)
+        fpgen = GetMorganGenerator(radius=3, fpSize=2048, includeChirality=True)
 
         fps_r = []
         fps_p = []

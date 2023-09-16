@@ -58,8 +58,6 @@ from molsetrep.models import (
     LightningGNNRegressor,
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
-    LightningMol2VecClassifier,
-    LightningMol2VecRegressor,
 )
 
 from molsetrep.data import PDBBindFeaturizer

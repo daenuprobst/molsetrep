@@ -20,7 +20,7 @@ from torchmetrics.regression import (
     PearsonCorrCoef,
 )
 
-from molsetrep.models import GINE, MLP, SetRep
+from molsetrep.models import GINE, MLP, SetRep, SetTransformer, DeepSet
 from molsetrep.metrics import AUPRC
 
 
@@ -72,12 +72,24 @@ class SRGNNClassifier(torch.nn.Module):
             else:
                 self.gnn = GIN(in_channels, self.n_hidden_channels[0], num_layers)
 
-        self.set_rep = SetRep(
-            n_hidden_sets,
-            n_elements,
-            self.n_hidden_channels[0],
-            self.n_hidden_channels[0],
-        )
+        if set_layer == "setrep":
+            self.set_rep = SetRep(
+                n_hidden_sets,
+                n_elements,
+                self.n_hidden_channels[0],
+                self.n_hidden_channels[0],
+            )
+        elif set_layer == "transformer":
+            self.set_rep = SetTransformer(
+                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+            )
+        elif set_layer == "deepset":
+            self.set_rep = DeepSet(
+                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+            )
+        else:
+            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+
         self.mlp = MLP(self.n_hidden_channels[0], self.n_hidden_channels[1], n_classes)
 
     def forward(self, batch):
@@ -128,12 +140,24 @@ class SRGNNRegressor(torch.nn.Module):
             else:
                 self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
 
-        self.set_rep = SetRep(
-            n_hidden_sets,
-            n_elements,
-            self.n_hidden_channels[0],
-            self.n_hidden_channels[0],
-        )
+        if set_layer == "setrep":
+            self.set_rep = SetRep(
+                n_hidden_sets,
+                n_elements,
+                self.n_hidden_channels[0],
+                self.n_hidden_channels[0],
+            )
+        elif set_layer == "transformer":
+            self.set_rep = SetTransformer(
+                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+            )
+        elif set_layer == "deepset":
+            self.set_rep = DeepSet(
+                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+            )
+        else:
+            raise ValueError(f"Set layer '{set_layer}' not implemented.")
+
         self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], 1)
 
     def forward(self, batch):
@@ -161,6 +185,7 @@ class LightningSRGNNClassifier(pl.LightningModule):
         n_edge_channels: int,
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
+        gnn_layer: Optional[torch.nn.Module] = None,
         set_layer: str = "setrep",
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
@@ -179,6 +204,7 @@ class LightningSRGNNClassifier(pl.LightningModule):
             n_edge_channels,
             n_hidden_channels,
             n_classes,
+            gnn=gnn_layer,
             set_layer=set_layer,
         )
 
@@ -327,6 +353,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
         n_in_channels: int,
         n_edge_channels: int,
         n_hidden_channels: Optional[List] = None,
+        gnn_layer: Optional[torch.nn.Module] = None,
         set_layer: str = "setrep",
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
@@ -344,6 +371,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
             n_layers,
             n_edge_channels,
             n_hidden_channels,
+            gnn=gnn_layer,
             set_layer=set_layer,
         )
 

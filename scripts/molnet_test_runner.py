@@ -1,7 +1,6 @@
 import os
 import random
 from typing import List, Optional
-from functools import partial
 from multiprocessing import cpu_count
 import typer
 import torch
@@ -9,10 +8,10 @@ import numpy as np
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 from wandb import finish as wandb_finish
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import wandb
 
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler
 
 from molsetrep.utils.datasets import (
     get_class_weights,
@@ -59,6 +58,8 @@ from molsetrep.models import (
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
 )
+
+from torch_geometric.nn.models import GAT, GCN
 
 from molsetrep.data import PDBBindFeaturizer
 
@@ -112,27 +113,25 @@ def get_model(
     class_weights: Optional[List[float]] = None,
     scaler: Optional[any] = None,
     set_layer: str = "setrep",
+    gnn_type: str = "gine",
     learning_rate: float = 0.001,
     n_layers: int = 6,
     **kwargs,
 ) -> torch.nn.Module:
-    if model_name == "mol2vec":
-        if task_type == "classification":
-            return LightningMol2VecClassifier(
-                d, n_classes, n_hidden_channels, class_weights, learning_rate, **kwargs
-            )
-        elif task_type == "regression":
-            return LightningMol2VecRegressor(
-                d,
-                n_hidden_channels,
-                learning_rate,
-                scaler,
-            )
-        else:
-            raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
-            )
-    elif model_name == "mol2set":
+    gnn_layer = None
+
+    if gnn_type.lower() == "gat":
+        gnn_layer = GAT(
+            d[0],
+            n_hidden_channels[0],
+            n_layers,
+            edge_dim=d[1],
+            jk="cat",
+        )
+    elif gnn_type.lower() == "gcn":
+        gnn_layer = GCN(d[0], n_hidden_channels[0], n_layers, jk="cat")
+
+    if model_name == "mol2set":
         if task_type == "classification":
             return LightningSRClassifier(
                 n_hidden_sets,
@@ -189,6 +188,7 @@ def get_model(
                 d[1],
                 n_classes,
                 n_hidden_channels,
+                gnn_layer,
                 set_layer,
                 class_weights,
                 learning_rate,
@@ -202,6 +202,7 @@ def get_model(
                 d[0],
                 d[1],
                 n_hidden_channels,
+                gnn_layer,
                 set_layer,
                 learning_rate,
                 scaler,
@@ -317,6 +318,7 @@ def main(
     learning_rate: float = 0.001,
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
+    gnn_type: str = "gine",
     charges: bool = False,
     project: Optional[str] = None,
     variant: Optional[str] = None,
@@ -523,6 +525,7 @@ def main(
                 learning_rate=learning_rate,
                 scaler=scaler,
                 n_hidden_channels=n_hidden_channels,
+                gnn_type=gnn_type,
                 set_layer=set_layer,
                 n_layers=n_layers,
             )
@@ -556,6 +559,8 @@ def main(
                     "splitter": splitter,
                     "experiment_idx": experiment_idx,
                     "split_ratio": split_ratio,
+                    "set_layer": set_layer,
+                    "gnn_type": gnn_type,
                 }
             )
             wandb_logger.watch(model, log="all")

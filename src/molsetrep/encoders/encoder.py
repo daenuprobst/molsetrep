@@ -37,7 +37,13 @@ class Encoder:
         Xn_tensors = []
         for X in Xn:
             n = len(X)
-            d = len(X[0][0])
+            d = -1
+
+            for x in X:
+                if len(x) > 0:
+                    d = len(x[0])
+                    break
+
             max_cardinality = max([len(x) for x in X])
 
             X_tensor = torch.zeros((n, max_cardinality, d))

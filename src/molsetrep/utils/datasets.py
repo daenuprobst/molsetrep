@@ -5,10 +5,14 @@ from pathlib import Path
 import numpy as np
 import deepchem.molnet as mn
 import pandas as pd
+
+from deepchem.splits import RandomSplitter
 from sklearn.model_selection import KFold
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
+
+from molsetrep.data import PDBBindLiSplitter
 
 
 @dataclass
@@ -177,6 +181,34 @@ molnet_tasks = {
         "SR-p53",
     ],
 }
+
+
+def pdbbind_li_task_loader(name: str, featurizer=None, **kwargs):
+    return ["-logKd/Ki"]
+
+
+def pdbbind_li_loader(
+    name: str, featurizer=None, split_ratio=0.7, seed=42, task_name=None, **kwargs
+):
+    kwargs.pop("splitter")
+    kwargs.pop("set_name")
+
+    tasks, refined_set, transformers = mn.load_pdbbind(
+        featurizer=featurizer,
+        set_name="refined",
+        splitter=PDBBindLiSplitter(),
+        **kwargs,
+    )
+
+    _, core_set, _ = mn.load_pdbbind(
+        featurizer=featurizer, set_name="core", splitter=None, **kwargs
+    )
+
+    train = refined_set[0]
+    valid = refined_set[1]
+    test = core_set[0]
+
+    return train, valid, test, tasks, transformers
 
 
 def custom_molnet_task_loader(name: str, featurizer=None, **kwargs):
@@ -444,7 +476,7 @@ def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     train = df.iloc[train_ids]
     test = df.iloc[test_ids]
 
-    valid = test  # train.sample(frac=0.2)
+    valid = train.sample(frac=0.2)
 
     return (
         CustomDataset.from_df(train, "smiles", tasks),

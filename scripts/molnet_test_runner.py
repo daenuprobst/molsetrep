@@ -32,6 +32,8 @@ from molsetrep.utils.datasets import (
     adme_task_loader,
     custom_molnet_loader,
     custom_molnet_task_loader,
+    pdbbind_li_loader,
+    pdbbind_li_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -40,6 +42,7 @@ from molsetrep.encoders import (
     DualSetEncoder,
     TripleSetEncoder,
     LigandProtEncoder,
+    LigandProtSpatialEncoder,
     GraphEncoder,
     Mol2VecEncoder,
     Mol2SetEncoder,
@@ -84,8 +87,11 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         return RXNGraphEncoder(charges=charges)
     elif data_set_name in ["doyle", "doyle_test", "az", "suzuki", "uspto"]:
         return RXNSetEncoder()
-    elif data_set_name == "pdbbind":
-        return LigandProtEncoder()
+    elif data_set_name in ["pdbbind", "pdbbind-li"]:
+        if model_name == "msr1":
+            return LigandProtSpatialEncoder(charges=charges)
+        elif model_name == "msr2":
+            return LigandProtEncoder(coords=True, charges=charges)
     elif model_name == "msr1":
         return SingleSetEncoder(charges=charges)
     elif model_name == "msr2":
@@ -167,12 +173,20 @@ def get_model(
                 n_classes,
                 n_hidden_channels,
                 class_weights,
+                gnn_layer,
                 learning_rate,
                 **kwargs,
             )
         elif task_type == "regression":
             return LightningGNNRegressor(
-                n_layers, d[0], d[1], n_hidden_channels, learning_rate, scaler, **kwargs
+                n_layers,
+                d[0],
+                d[1],
+                n_hidden_channels,
+                gnn_layer,
+                learning_rate,
+                scaler,
+                **kwargs,
             )
         else:
             raise ValueError(
@@ -324,6 +338,7 @@ def main(
     variant: Optional[str] = None,
     split_ratio: float = 0.9,
     task: Optional[List[str]] = None,
+    pdbbind_subset: str = "core",
     ckpt_path: str = "best",
 ):
     featurizer = None
@@ -359,9 +374,14 @@ def main(
         data_loader = uspto_loader
         task_loader = uspto_task_loader
 
+    if data_set_name == "pdbbind-li":
+        featurizer = PDBBindFeaturizer()
+        data_loader = pdbbind_li_loader
+        task_loader = pdbbind_li_task_loader
+
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
-        set_name = "refined"
+        set_name = pdbbind_subset
 
     if splitter == "custom-scaffold":
         data_loader = custom_molnet_loader
@@ -402,7 +422,7 @@ def main(
             )
 
             # In case tasks are loaded separately (e.g. ADME data)
-            if len(train.y[0]) == 1:
+            if data_set_name not in ["pdbbind", "pdbbind-li"] and len(train.y[0]) == 1:
                 task_idx = 0
 
             class_weights = None
@@ -435,19 +455,19 @@ def main(
             enc = get_encoder(model_name, data_set_name, charges)
 
             train_dataset = enc.encode(
-                train.X if data_set_name == "pdbbind" else train.ids,
+                train.X if data_set_name in ["pdbbind", "pdbbind-li"] else train.ids,
                 train_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
             )
             valid_dataset = enc.encode(
-                valid.X if data_set_name == "pdbbind" else valid.ids,
+                valid.X if data_set_name in ["pdbbind", "pdbbind-li"] else valid.ids,
                 valid_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
             )
             test_dataset = enc.encode(
-                test.X if data_set_name == "pdbbind" else test.ids,
+                test.X if data_set_name in ["pdbbind", "pdbbind-li"] else test.ids,
                 test_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,

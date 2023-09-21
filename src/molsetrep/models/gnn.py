@@ -122,6 +122,7 @@ class LightningGNNClassifier(pl.LightningModule):
         n_classes: int,
         n_hidden_channels: Optional[List] = None,
         class_weights: Optional[List] = None,
+        gnn: Optional[torch.nn.Module] = None,
         learning_rate: float = 0.001,
     ) -> None:
         super(LightningGNNClassifier, self).__init__()
@@ -131,7 +132,7 @@ class LightningGNNClassifier(pl.LightningModule):
         self.learning_rate = learning_rate
 
         self.gnn_classifier = GNNClassifier(
-            n_in_channels, n_layers, n_edge_channels, n_hidden_channels, n_classes
+            n_in_channels, n_layers, n_edge_channels, n_hidden_channels, n_classes, gnn
         )
 
         # Criterions
@@ -277,6 +278,7 @@ class LightningGNNRegressor(pl.LightningModule):
         n_in_channels: int,
         n_edge_channels: int,
         n_hidden_channels: Optional[List] = None,
+        gnn: Optional[torch.nn.Module] = None,
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
     ) -> None:
@@ -287,7 +289,7 @@ class LightningGNNRegressor(pl.LightningModule):
         self.scaler = scaler
 
         self.gnn_regressor = GNNRegressor(
-            n_in_channels, n_layers, n_edge_channels, n_hidden_channels
+            n_in_channels, n_layers, n_edge_channels, n_hidden_channels, gnn
         )
 
         # Metrics

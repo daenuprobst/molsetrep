@@ -15,8 +15,9 @@ from molsetrep.encoders.common import (
 
 
 class LigandProtEncoder(Encoder):
-    def __init__(self, charges: bool = True) -> Encoder:
+    def __init__(self, coords: bool = True, charges: bool = False) -> Encoder:
         super().__init__("LigandProtEncoder")
+        self.coords = coords
         self.charges = charges
 
     def encode(
@@ -36,9 +37,16 @@ class LigandProtEncoder(Encoder):
             if self.charges:
                 ComputeGasteigerCharges(ligand_mol)
 
+            conf = ligand_mol.GetConformer()
+
             fp_ligand_atoms = []
-            for atom in ligand_mol.GetAtoms():
-                fp_ligand_atoms.append(get_atomic_invariants(atom, False))
+            for i, atom in enumerate(ligand_mol.GetAtoms()):
+                xyz = []
+                if self.coords:
+                    pos = conf.GetAtomPosition(i)
+                    xyz = [pos.x, pos.y, pos.z]
+
+                fp_ligand_atoms.append(get_atomic_invariants(atom, False) + xyz)
 
             fps_ligand.append(fp_ligand_atoms)
 
@@ -46,9 +54,16 @@ class LigandProtEncoder(Encoder):
             if self.charges:
                 ComputeGasteigerCharges(prot_mol)
 
+            conf = prot_mol.GetConformer()
+
             fp_prot_atoms = []
-            for atom in prot_mol.GetAtoms():
-                fp_prot_atoms.append(get_atomic_invariants(atom, False))
+            for i, atom in enumerate(prot_mol.GetAtoms()):
+                xyz = []
+                if self.coords:
+                    pos = conf.GetAtomPosition(i)
+                    xyz = [pos.x, pos.y, pos.z]
+
+                fp_prot_atoms.append(get_atomic_invariants(atom, False) + xyz)
 
             fps_prot.append(fp_prot_atoms)
 

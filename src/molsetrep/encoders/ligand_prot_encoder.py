@@ -1,6 +1,7 @@
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Optional, Tuple
 
 import torch
+import numpy as np
 
 from torch.utils.data import TensorDataset
 from rdkit import RDLogger
@@ -9,9 +10,7 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from rdkit.Chem import MolFromSmiles
 
 from molsetrep.encoders.encoder import Encoder
-from molsetrep.encoders.common import (
-    get_atomic_invariants,
-)
+from molsetrep.encoders.common import get_atomic_invariants, one_hot_encode
 
 
 class LigandProtEncoder(Encoder):
@@ -19,6 +18,13 @@ class LigandProtEncoder(Encoder):
         super().__init__("LigandProtEncoder")
         self.coords = coords
         self.charges = charges
+
+    def get_neighbours(
+        self, query: np.ndarray, x: np.ndarray, r: float = 2.5
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        dists = np.linalg.norm(x - query, axis=1)
+        inds = np.where(dists < r)[0]
+        return inds, dists[inds]
 
     def encode(
         self,
@@ -35,37 +41,38 @@ class LigandProtEncoder(Encoder):
         for ligand_mol, prot_mol in mols:
             # Handle ligand
             if self.charges:
-                ComputeGasteigerCharges(ligand_mol)
-
-            conf = ligand_mol.GetConformer()
-
-            fp_ligand_atoms = []
-            for i, atom in enumerate(ligand_mol.GetAtoms()):
-                xyz = []
-                if self.coords:
-                    pos = conf.GetAtomPosition(i)
-                    xyz = [pos.x, pos.y, pos.z]
-
-                fp_ligand_atoms.append(get_atomic_invariants(atom, False) + xyz)
-
-            fps_ligand.append(fp_ligand_atoms)
-
-            # handle protein
-            if self.charges:
                 ComputeGasteigerCharges(prot_mol)
 
-            conf = prot_mol.GetConformer()
+            conf_ligand = ligand_mol.GetConformer()
+            conf_prot = prot_mol.GetConformer()
 
-            fp_prot_atoms = []
-            for i, atom in enumerate(prot_mol.GetAtoms()):
-                xyz = []
-                if self.coords:
-                    pos = conf.GetAtomPosition(i)
-                    xyz = [pos.x, pos.y, pos.z]
+            pos_ligand = conf_ligand.GetPositions()
+            pos_prot = conf_prot.GetPositions()
 
-                fp_prot_atoms.append(get_atomic_invariants(atom, False) + xyz)
+            fp_ligand = []
+            fp_prot = []
 
-            fps_prot.append(fp_prot_atoms)
+            # If r is to small (no atoms added for the whole complex) increase r
+            increase_r = 0.0
+            while len(fp_ligand) == 0 and len(fp_prot) == 0:
+                for i, ligand_xyz in enumerate(pos_ligand):
+                    neighbour_inds, _ = self.get_neighbours(
+                        ligand_xyz, pos_prot, 5.5 + increase_r
+                    )
+                    if len(neighbour_inds) == 0:
+                        continue
+
+                    atom_ligand = ligand_mol.GetAtomWithIdx(i)
+                    fp_ligand.append(get_atomic_invariants(atom_ligand, self.charges))
+
+                    for idx in neighbour_inds:
+                        atom_prot = prot_mol.GetAtomWithIdx(int(idx))
+                        fp_prot.append(get_atomic_invariants(atom_prot, self.charges))
+
+                increase_r += 0.25
+
+            fps_ligand.append(fp_ligand)
+            fps_prot.append(fp_prot)
 
         return super().to_multi_tensor_dataset(
             [fps_ligand, fps_prot], labels, label_dtype

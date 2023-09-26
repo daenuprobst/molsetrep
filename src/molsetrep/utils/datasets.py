@@ -7,24 +7,33 @@ import deepchem.molnet as mn
 import pandas as pd
 
 from deepchem.splits import RandomSplitter
+from deepchem.utils.rdkit_utils import load_molecule
 from sklearn.model_selection import KFold
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
 
-from molsetrep.data import PDBBindLiSplitter
-
 
 @dataclass
 class CustomDataset:
-    ids: np.array
-    y: np.array
+    ids: np.ndarray
+    y: np.ndarray
 
     @staticmethod
     def from_df(df, ids_column: str, y_columns: List[str]):
         return CustomDataset(
             df[ids_column].to_numpy(), df[df.columns.intersection(y_columns)].to_numpy()
         )
+
+
+@dataclass
+class CustomPDBBindDataset:
+    X: np.ndarray
+    y: np.ndarray
+
+    @staticmethod
+    def from_df(X: np.ndarray, y: np.ndarray):
+        return CustomPDBBindDataset(X, y)
 
 
 ##############################
@@ -183,32 +192,37 @@ molnet_tasks = {
 }
 
 
-def pdbbind_li_task_loader(name: str, featurizer=None, **kwargs):
+def pdbbind_custom_task_loader(name: str, featurizer=None, **kwargs):
     return ["-logKd/Ki"]
 
 
-def pdbbind_li_loader(
+def pdbbind_custom_loader(
     name: str, featurizer=None, split_ratio=0.7, seed=42, task_name=None, **kwargs
 ):
-    kwargs.pop("splitter")
-    kwargs.pop("set_name")
+    root_path = Path(__file__).resolve().parent
+    meta_path = Path(root_path, "../../../data/pdbbind/meta.csv")
 
-    tasks, refined_set, transformers = mn.load_pdbbind(
-        featurizer=featurizer,
-        set_name="refined",
-        splitter=PDBBindLiSplitter(),
-        **kwargs,
-    )
+    data = {"train": [[], []], "valid": [[], []], "test": [[], []]}
+    df = pd.read_csv(meta_path)
 
-    _, core_set, _ = mn.load_pdbbind(
-        featurizer=featurizer, set_name="core", splitter=None, **kwargs
-    )
+    for _, row in df.iterrows():
+        data[row["split"]][0].append(
+            (
+                load_molecule(row["mol_path"], calc_charges=False, add_hydrogens=False)[
+                    1
+                ],
+                load_molecule(
+                    row["pocket_path"], calc_charges=False, add_hydrogens=False
+                )[1],
+            )
+        )
+        data[row["split"]][1].append([row["label"]])
 
-    train = refined_set[0]
-    valid = refined_set[1]
-    test = core_set[0]
+    train = CustomPDBBindDataset(data["train"][0], np.array(data["train"][1]))
+    valid = CustomPDBBindDataset(data["valid"][0], np.array(data["valid"][1]))
+    test = CustomPDBBindDataset(data["test"][0], np.array(data["test"][1]))
 
-    return train, valid, test, tasks, transformers
+    return train, valid, test, ["-logKd/Ki"], None
 
 
 def custom_molnet_task_loader(name: str, featurizer=None, **kwargs):

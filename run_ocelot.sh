@@ -25,4 +25,5 @@
 # python scripts/molnet_test_runner.py ocelot msr1 --monitor loss --splitter scaffold --n 5 --max-epochs 250 --project ocelot-final --n-hidden-sets 64 --n-elements 4 --task homo
 # python scripts/molnet_test_runner.py ocelot msr2 --monitor loss --splitter scaffold --n 5 --max-epochs 250 --project ocelot-final --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4 --task homo
 
-python scripts/molnet_test_runner.py ocelot gnn --monitor loss --splitter scaffold --n 5 --max-epochs 150 --n-hidden-channels 64 --n-hidden-channels 32 --batch-size 128 --project ocelot-final
+# python scripts/molnet_test_runner.py ocelot gnn --monitor loss --splitter scaffold --n 5 --max-epochs 150 --n-hidden-channels 64 --n-hidden-channels 32 --batch-size 128 --project ocelot-final
+python scripts/molnet_test_runner.py ocelot msr1 --monitor loss --splitter scaffold --n 5 --max-epochs 250 --project ocelot-final --n-hidden-sets 64 --n-hidden-sets 64 --n-elements 4 --n-elements 4 --task vie --project ocelot-variant --charges --variant charges

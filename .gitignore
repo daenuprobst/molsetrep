@@ -57,5 +57,7 @@ MANIFEST
 lightning_logs
 wandb
 data_tmp
+data/pdbbind
+!data/pdbbind/.gitkeep
 
 *.ckpt

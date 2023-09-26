@@ -9,3 +9,4 @@ from molsetrep.encoders.ligand_prot_encoder import LigandProtEncoder
 from molsetrep.encoders.ligand_prot_spatial_encoder import LigandProtSpatialEncoder
 from molsetrep.encoders.graph_encoder import GraphEncoder
 from molsetrep.encoders.rxn_graph_encoder import RXNGraphEncoder
+from molsetrep.encoders.pi_encoder import PiEncoder

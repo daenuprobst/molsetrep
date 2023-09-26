@@ -1,4 +1,4 @@
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Optional, Tuple
 
 import torch
 import numpy as np
@@ -10,9 +10,7 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from rdkit.Chem import MolFromSmiles
 
 from molsetrep.encoders.encoder import Encoder
-from molsetrep.encoders.common import (
-    get_atomic_invariants,
-)
+from molsetrep.encoders.common import get_atomic_invariants, one_hot_encode
 
 
 class LigandProtSpatialEncoder(Encoder):
@@ -22,9 +20,10 @@ class LigandProtSpatialEncoder(Encoder):
 
     def get_neighbours(
         self, query: np.ndarray, x: np.ndarray, r: float = 2.5
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         dists = np.linalg.norm(x - query, axis=1)
-        return np.where(dists < r)[0]
+        inds = np.where(dists < r)[0]
+        return inds, dists[inds]
 
     def encode(
         self,
@@ -35,7 +34,7 @@ class LigandProtSpatialEncoder(Encoder):
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
-        fps_atoms = []
+        fps_atom_pairs = []
 
         for ligand_mol, prot_mol in mols:
             # Handle ligand
@@ -48,62 +47,31 @@ class LigandProtSpatialEncoder(Encoder):
             pos_ligand = conf_ligand.GetPositions()
             pos_prot = conf_prot.GetPositions()
 
-            fp_atoms = []
+            fp_atom_pair = []
 
             # If r is to small (no atoms added for the whole complex) increase r
             increase_r = 0.0
-            while len(fp_atoms) == 0:
+            while len(fp_atom_pair) == 0:
                 for i, ligand_xyz in enumerate(pos_ligand):
-                    neighbour_inds = self.get_neighbours(
-                        ligand_xyz, pos_prot, 3.5 + increase_r
+                    neighbour_inds, neighbour_dists = self.get_neighbours(
+                        ligand_xyz, pos_prot, 5.5 + increase_r
                     )
                     if len(neighbour_inds) == 0:
                         continue
 
-                    # print(len(neighbour_inds))
+                    atom_ligand = ligand_mol.GetAtomWithIdx(i)
 
-                    fp_atoms.append(
-                        get_atomic_invariants(
-                            ligand_mol.GetAtomWithIdx(i), self.charges
-                        )
-                    )
+                    for idx, dist in zip(neighbour_inds, neighbour_dists):
+                        atom_prot = prot_mol.GetAtomWithIdx(int(idx))
 
-                    for idx in neighbour_inds:
-                        fp_atoms.append(
-                            get_atomic_invariants(
-                                prot_mol.GetAtomWithIdx(int(idx)), self.charges
-                            )
+                        fp_atom_pair.append(
+                            get_atomic_invariants(atom_ligand, self.charges)
+                            + one_hot_encode(int(round(dist)), 6)
+                            + get_atomic_invariants(atom_prot, self.charges)
                         )
+
                 increase_r += 0.25
 
-            fps_atoms.append(fp_atoms)
+            fps_atom_pairs.append(fp_atom_pair)
 
-            # fp_ligand_atoms = []
-            # for i, atom in enumerate(ligand_mol.GetAtoms()):
-            #     xyz = []
-            #     if self.coords:
-            #         pos = conf.GetAtomPosition(i)
-            #         xyz = [pos.x, pos.y, pos.z]
-
-            #     fp_ligand_atoms.append(get_atomic_invariants(atom, False) + xyz)
-
-            # fps_ligand.append(fp_ligand_atoms)
-
-            # # handle protein
-            # if self.charges:
-            #     ComputeGasteigerCharges(prot_mol)
-
-            # conf = prot_mol.GetConformer()
-
-            # fp_prot_atoms = []
-            # for i, atom in enumerate(prot_mol.GetAtoms()):
-            #     xyz = []
-            #     if self.coords:
-            #         pos = conf.GetAtomPosition(i)
-            #         xyz = [pos.x, pos.y, pos.z]
-
-            #     fp_prot_atoms.append(get_atomic_invariants(atom, False) + xyz)
-
-            # fps_prot.append(fp_prot_atoms)
-
-        return super().to_multi_tensor_dataset([fps_atoms], labels, label_dtype)
+        return super().to_multi_tensor_dataset([fps_atom_pairs], labels, label_dtype)

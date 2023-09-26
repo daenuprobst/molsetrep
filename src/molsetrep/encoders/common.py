@@ -32,7 +32,7 @@ def get_bond_invariants_as_dict(bond):
     return {f"edge_{i}": v for i, v, in enumerate(invariants)}
 
 
-def get_atomic_invariants(atom, charges: bool = True):
+def get_atomic_invariants(atom, charges: bool = True, max_atomic_num: int = 100):
     atomic_invariants = []
     atomic_invariants += one_hot_encode(atom.GetTotalDegree(), 6)
     # atomic_invariants += one_hot_encode(
@@ -42,7 +42,7 @@ def get_atomic_invariants(atom, charges: bool = True):
     #     - atom.GetNumImplicitHs(),
     #     6,
     # )
-    atomic_invariants += one_hot_encode(atom.GetAtomicNum(), 100)
+    atomic_invariants += one_hot_encode(atom.GetAtomicNum(), max_atomic_num)
     atomic_invariants += one_hot_encode(atom.GetFormalCharge(), [-2, -1, 0, 1, 2])
     atomic_invariants += one_hot_encode(
         atom.GetHybridization(),

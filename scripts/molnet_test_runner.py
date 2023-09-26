@@ -32,8 +32,8 @@ from molsetrep.utils.datasets import (
     adme_task_loader,
     custom_molnet_loader,
     custom_molnet_task_loader,
-    pdbbind_li_loader,
-    pdbbind_li_task_loader,
+    pdbbind_custom_loader,
+    pdbbind_custom_task_loader,
 )
 
 from molsetrep.encoders import (
@@ -48,6 +48,7 @@ from molsetrep.encoders import (
     Mol2SetEncoder,
     RXNSetEncoder,
     RXNGraphEncoder,
+    PiEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -87,7 +88,7 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         return RXNGraphEncoder(charges=charges)
     elif data_set_name in ["doyle", "doyle_test", "az", "suzuki", "uspto"]:
         return RXNSetEncoder()
-    elif data_set_name in ["pdbbind", "pdbbind-li"]:
+    elif data_set_name in ["pdbbind", "pdbbind-custom"]:
         if model_name == "msr1":
             return LigandProtSpatialEncoder(charges=charges)
         elif model_name == "msr2":
@@ -374,10 +375,10 @@ def main(
         data_loader = uspto_loader
         task_loader = uspto_task_loader
 
-    if data_set_name == "pdbbind-li":
+    if data_set_name == "pdbbind-custom":
         featurizer = PDBBindFeaturizer()
-        data_loader = pdbbind_li_loader
-        task_loader = pdbbind_li_task_loader
+        data_loader = pdbbind_custom_loader
+        task_loader = pdbbind_custom_task_loader
 
     if data_set_name == "pdbbind":
         featurizer = PDBBindFeaturizer()
@@ -422,7 +423,10 @@ def main(
             )
 
             # In case tasks are loaded separately (e.g. ADME data)
-            if data_set_name not in ["pdbbind", "pdbbind-li"] and len(train.y[0]) == 1:
+            if (
+                data_set_name not in ["pdbbind", "pdbbind-custom"]
+                and len(train.y[0]) == 1
+            ):
                 task_idx = 0
 
             class_weights = None
@@ -455,19 +459,23 @@ def main(
             enc = get_encoder(model_name, data_set_name, charges)
 
             train_dataset = enc.encode(
-                train.X if data_set_name in ["pdbbind", "pdbbind-li"] else train.ids,
+                train.X
+                if data_set_name in ["pdbbind", "pdbbind-custom"]
+                else train.ids,
                 train_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
             )
             valid_dataset = enc.encode(
-                valid.X if data_set_name in ["pdbbind", "pdbbind-li"] else valid.ids,
+                valid.X
+                if data_set_name in ["pdbbind", "pdbbind-custom"]
+                else valid.ids,
                 valid_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
             )
             test_dataset = enc.encode(
-                test.X if data_set_name in ["pdbbind", "pdbbind-li"] else test.ids,
+                test.X if data_set_name in ["pdbbind", "pdbbind-custom"] else test.ids,
                 test_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,

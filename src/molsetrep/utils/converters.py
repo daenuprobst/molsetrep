@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Any, Iterable, Dict, Callable
+from typing import Optional, Union, List, Any, Iterable
 from collections import defaultdict
 
 import torch
@@ -7,16 +7,14 @@ import networkx as nx
 
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, ImbalancedSampler
-from rdkit.Chem.rdchem import Mol, Atom, Bond
+
+from rdkit import RDLogger
+from rdkit.Chem.rdchem import Mol
 from rdkit.Chem.AllChem import (
     MolFromSmiles,
     GetSymmSSSR,
-    HybridizationType,
-    ChiralType,
-    BondType,
-    BondStereo,
 )
-from rdkit import RDLogger
+
 
 from mhfp.encoder import MHFPEncoder
 

@@ -1,8 +1,10 @@
 from typing import List, Tuple, Optional, Any, Union, Literal
+
 import torch
 from torch import Tensor
-from torchmetrics import Metric
 
+from torchmetrics import Metric
+from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics.functional.classification.auroc import _reduce_auroc
 from torchmetrics.functional.classification.precision_recall_curve import (
     _adjust_threshold_arg,
@@ -12,8 +14,6 @@ from torchmetrics.functional.classification.precision_recall_curve import (
     _multiclass_precision_recall_curve_tensor_validation,
     _multiclass_precision_recall_curve_update,
 )
-from torchmetrics.metric import Metric
-from torchmetrics.utilities.data import dim_zero_cat
 
 
 class AUPRC(Metric):

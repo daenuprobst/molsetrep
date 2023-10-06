@@ -6,7 +6,6 @@ from molsetrep.encoders.mol2vec_encoder import Mol2VecEncoder
 from molsetrep.encoders.mol2set_encoder import Mol2SetEncoder
 from molsetrep.encoders.encoder import Encoder
 from molsetrep.encoders.ligand_prot_encoder import LigandProtEncoder
-from molsetrep.encoders.ligand_prot_spatial_encoder import LigandProtSpatialEncoder
+from molsetrep.encoders.ligand_prot_pair_encoder import LigandProtPairEncoder
 from molsetrep.encoders.graph_encoder import GraphEncoder
 from molsetrep.encoders.rxn_graph_encoder import RXNGraphEncoder
-from molsetrep.encoders.pi_encoder import PiEncoder

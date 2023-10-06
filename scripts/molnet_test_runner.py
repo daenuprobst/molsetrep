@@ -42,13 +42,12 @@ from molsetrep.encoders import (
     DualSetEncoder,
     TripleSetEncoder,
     LigandProtEncoder,
-    LigandProtSpatialEncoder,
+    LigandProtPairEncoder,
     GraphEncoder,
     Mol2VecEncoder,
     Mol2SetEncoder,
     RXNSetEncoder,
     RXNGraphEncoder,
-    PiEncoder,
 )
 from molsetrep.models import (
     LightningSRClassifier,
@@ -90,7 +89,7 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         return RXNSetEncoder()
     elif data_set_name in ["pdbbind", "pdbbind-custom"]:
         if model_name == "msr1":
-            return LigandProtSpatialEncoder(charges=charges)
+            return LigandProtPairEncoder(charges=charges)
         elif model_name == "msr2":
             return LigandProtEncoder(coords=True, charges=charges)
     elif model_name == "msr1":

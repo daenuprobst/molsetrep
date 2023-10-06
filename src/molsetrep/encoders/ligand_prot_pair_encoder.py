@@ -13,9 +13,9 @@ from molsetrep.encoders.encoder import Encoder
 from molsetrep.encoders.common import get_atomic_invariants, one_hot_encode
 
 
-class LigandProtSpatialEncoder(Encoder):
+class LigandProtPairEncoder(Encoder):
     def __init__(self, charges: bool = False) -> Encoder:
-        super().__init__("LigandProtEncoder")
+        super().__init__("LigandProtPairEncoder")
         self.charges = charges
 
     def get_neighbours(

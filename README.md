@@ -76,7 +76,19 @@ The following models / architectures and associated encoders are available. If y
 
 ## Examples
 
-...
+### Molecular property prediction (ADME)
+
+An example of molecular set representation learning for molecular property prediction using single sets, dual sets, and set-enhanced GNNs can be found in the notebook [example/property_prediction.ipynb](example/property_prediction.ipynb).
+
+### Protein-ligand binding affinity prediction
+
+For this example, make sure you have downloaded the PDBbind database (or any other data set you may want to use) and prepare it using the script [scripts/preprocess_pdbbind.py](scripts/preprocess_pdbbind.py).
+
+An example of molecular set representation learning for protein-ligand binding affinity prediction using dual sets can be found in the notebook [example/property_prediction.ipynb](example/preprocess_pdbbind.ipynb).
+
+### Reaction yield prediction
+
+An example of molecular set representation learning for reaction yield prediction using dual sets can be found in the notebook [example/property_prediction.ipynb](example/reaction_yield_prediction.ipynb).
 
 ## Cite
 

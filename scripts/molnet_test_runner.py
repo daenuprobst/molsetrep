@@ -40,12 +40,9 @@ from molsetrep.encoders import (
     Encoder,
     SingleSetEncoder,
     DualSetEncoder,
-    TripleSetEncoder,
     LigandProtEncoder,
     LigandProtPairEncoder,
     GraphEncoder,
-    Mol2VecEncoder,
-    Mol2SetEncoder,
     RXNSetEncoder,
     RXNGraphEncoder,
 )
@@ -96,14 +93,8 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         return SingleSetEncoder(charges=charges)
     elif model_name == "msr2":
         return DualSetEncoder(charges=charges)
-    elif model_name == "msr3":
-        return TripleSetEncoder(charges=charges)
     elif model_name == "gnn" or model_name == "srgnn":
         return GraphEncoder(charges=charges)
-    elif model_name == "mol2vec":
-        return Mol2VecEncoder()
-    elif model_name == "mol2set":
-        return Mol2SetEncoder()
     else:
         raise ValueError(f"No model named '{model_name}' available.")
 
@@ -137,34 +128,7 @@ def get_model(
     elif gnn_type.lower() == "gcn":
         gnn_layer = GCN(d[0], n_hidden_channels[0], n_layers, jk="cat")
 
-    if model_name == "mol2set":
-        if task_type == "classification":
-            return LightningSRClassifier(
-                n_hidden_sets,
-                n_elements,
-                d,
-                n_classes,
-                n_hidden_channels,
-                class_weights,
-                learning_rate,
-                set_layer,
-            )
-        elif task_type == "regression":
-            return LightningSRRegressor(
-                n_hidden_sets,
-                n_elements,
-                d,
-                n_hidden_channels,
-                learning_rate=learning_rate,
-                set_layer=set_layer,
-                scaler=scaler,
-                **kwargs,
-            )
-        else:
-            raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
-            )
-    elif model_name == "gnn":
+    if model_name == "gnn":
         if task_type == "classification":
             return LightningGNNClassifier(
                 n_layers,

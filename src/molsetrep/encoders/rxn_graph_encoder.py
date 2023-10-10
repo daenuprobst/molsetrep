@@ -25,7 +25,7 @@ from molsetrep.encoders.common import (
 
 
 class RXNGraphEncoder:
-    def __init__(self, charges: bool = True, fix_seed=True) -> "RXNGraphEncoder":
+    def __init__(self, charges: bool = False, fix_seed=True) -> "RXNGraphEncoder":
         self.charges = charges
         self.fix_seed = fix_seed
 

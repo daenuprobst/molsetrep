@@ -25,7 +25,7 @@ from molsetrep.encoders.common import (
 
 
 class GraphEncoder:
-    def __init__(self, charges: bool = True, fix_seed=True) -> "GraphEncoder":
+    def __init__(self, charges: bool = False, fix_seed: bool = True) -> "GraphEncoder":
         self.charges = charges
         self.fix_seed = fix_seed
 

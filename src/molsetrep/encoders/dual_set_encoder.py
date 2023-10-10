@@ -17,7 +17,7 @@ from molsetrep.encoders.common import (
 
 
 class DualSetEncoder(Encoder):
-    def __init__(self, charges: bool = True) -> Encoder:
+    def __init__(self, charges: bool = False) -> Encoder:
         super().__init__("DualSetEncoder")
         self.charges = charges
 

@@ -13,7 +13,7 @@ from molsetrep.encoders.common import get_atomic_invariants
 
 
 class SingleSetEncoder(Encoder):
-    def __init__(self, charges: bool = True) -> Encoder:
+    def __init__(self, charges: bool = False) -> Encoder:
         super().__init__("SingleSetEncoder")
         self.charges = charges
 

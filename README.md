@@ -107,4 +107,3 @@ For protein-ligand binding affinity prediction, make sure you have downloaded th
   year={2023}
 }
 ```
-...

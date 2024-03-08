@@ -10,14 +10,17 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from rdkit.Chem import MolFromSmiles
 
 from molsetrep.encoders.encoder import Encoder
-from molsetrep.encoders.common import get_atomic_invariants, one_hot_encode
+from molsetrep.encoders.common import get_atomic_invariants, one_hot_encode, RESIDUE_MAP
 
 
 class LigandProtEncoder(Encoder):
-    def __init__(self, coords: bool = True, charges: bool = False) -> Encoder:
+    def __init__(
+        self, coords: bool = True, charges: bool = False, radius: float = 5.5
+    ) -> Encoder:
         super().__init__("LigandProtEncoder")
         self.coords = coords
         self.charges = charges
+        self.radius = radius
 
     def get_neighbours(
         self, query: np.ndarray, x: np.ndarray, r: float = 2.5
@@ -31,7 +34,7 @@ class LigandProtEncoder(Encoder):
         mols: Iterable[Any],
         labels: Iterable[Any],
         label_dtype: Optional[torch.dtype] = None,
-        **kwargs
+        **kwargs,
     ) -> TensorDataset:
         RDLogger.DisableLog("rdApp.*")
 
@@ -57,7 +60,7 @@ class LigandProtEncoder(Encoder):
             while len(fp_ligand) == 0 and len(fp_prot) == 0:
                 for i, ligand_xyz in enumerate(pos_ligand):
                     neighbour_inds, _ = self.get_neighbours(
-                        ligand_xyz, pos_prot, 5.5 + increase_r
+                        ligand_xyz, pos_prot, self.radius + increase_r
                     )
                     if len(neighbour_inds) == 0:
                         continue
@@ -67,7 +70,11 @@ class LigandProtEncoder(Encoder):
 
                     for idx in neighbour_inds:
                         atom_prot = prot_mol.GetAtomWithIdx(int(idx))
-                        fp_prot.append(get_atomic_invariants(atom_prot, self.charges))
+                        res = atom_prot.GetPDBResidueInfo().GetResidueName()
+                        fp_prot.append(
+                            get_atomic_invariants(atom_prot, self.charges)
+                            + one_hot_encode(RESIDUE_MAP.get(res, 0), len(RESIDUE_MAP))
+                        )
 
                 increase_r += 0.25
 

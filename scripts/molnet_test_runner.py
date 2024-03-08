@@ -73,7 +73,12 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 # torch.set_float32_matmul_precision("medium")
 
 
-def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> Encoder:
+def get_encoder(
+    model_name: str,
+    data_set_name: str,
+    charges: bool = True,
+    pdbbind_radius: float = 5.5,
+) -> Encoder:
     if data_set_name in [
         "doyle",
         "doyle_test",
@@ -88,7 +93,9 @@ def get_encoder(model_name: str, data_set_name: str, charges: bool = True) -> En
         if model_name == "msr1":
             return LigandProtPairEncoder(charges=charges)
         elif model_name == "msr2":
-            return LigandProtEncoder(coords=True, charges=charges)
+            return LigandProtEncoder(
+                coords=True, charges=charges, radius=pdbbind_radius
+            )
     elif model_name == "msr1":
         return SingleSetEncoder(charges=charges)
     elif model_name == "msr2":
@@ -302,6 +309,7 @@ def main(
     variant: Optional[str] = None,
     split_ratio: float = 0.9,
     task: Optional[List[str]] = None,
+    pdbbind_radius: float = 5.5,
     pdbbind_subset: str = "core",
     ckpt_path: str = "best",
 ):
@@ -419,20 +427,24 @@ def main(
                 valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
                 test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
 
-            enc = get_encoder(model_name, data_set_name, charges)
+            enc = get_encoder(model_name, data_set_name, charges, pdbbind_radius)
 
             train_dataset = enc.encode(
-                train.X
-                if data_set_name in ["pdbbind", "pdbbind-custom"]
-                else train.ids,
+                (
+                    train.X
+                    if data_set_name in ["pdbbind", "pdbbind-custom"]
+                    else train.ids
+                ),
                 train_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
             )
             valid_dataset = enc.encode(
-                valid.X
-                if data_set_name in ["pdbbind", "pdbbind-custom"]
-                else valid.ids,
+                (
+                    valid.X
+                    if data_set_name in ["pdbbind", "pdbbind-custom"]
+                    else valid.ids
+                ),
                 valid_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
@@ -552,6 +564,7 @@ def main(
                     "split_ratio": split_ratio,
                     "set_layer": set_layer,
                     "gnn_type": gnn_type,
+                    "pdbbind_radius": pdbbind_radius,
                 }
             )
             wandb_logger.watch(model, log="all")

@@ -7,6 +7,31 @@ from rdkit.Chem import (
 
 N_BOND_INVARIANTS = 14
 
+RESIDUE_MAP = {
+    "ALA": 1,
+    "ARG": 2,
+    "ASN": 3,
+    "ASP": 4,
+    "CYS": 5,
+    "GLU": 6,
+    "GLN": 7,
+    "GLY": 8,
+    "HIS": 9,
+    "HYP": 10,
+    "ILE": 11,
+    "LEU": 12,
+    "LYS": 13,
+    "MET": 14,
+    "PHE": 15,
+    "PRO": 16,
+    "GLP": 17,
+    "SER": 18,
+    "THR": 19,
+    "TRP": 20,
+    "TYR": 21,
+    "VAL": 22,
+}
+
 
 def one_hot_encode(prop: Any, vals: Union[int, Iterable[int]]):
     if not isinstance(vals, Iterable):

@@ -31,6 +31,7 @@ from molsetrep.utils.datasets import (
     adme_loader,
     adme_task_loader,
     custom_molnet_loader,
+    custom_molnet_loader_random,
     custom_molnet_task_loader,
     pdbbind_custom_loader,
     pdbbind_custom_task_loader,
@@ -312,6 +313,7 @@ def main(
     pdbbind_radius: float = 5.5,
     pdbbind_subset: str = "core",
     ckpt_path: str = "best",
+    custom_path: Optional[str] = None,
 ):
     featurizer = None
     set_name = None
@@ -359,6 +361,10 @@ def main(
         data_loader = custom_molnet_loader
         task_loader = custom_molnet_task_loader
 
+    if splitter == "custom-random":
+        data_loader = custom_molnet_loader_random
+        task_loader = custom_molnet_task_loader
+
     tasks = task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
     print(f'\nDataset "{data_set_name}" contains {len(tasks)} task(s).')
 
@@ -391,6 +397,7 @@ def main(
                 n_folds=n,
                 task_name=task_name,
                 split_ratio=split_ratio,
+                custom_path=custom_path,
             )
 
             # In case tasks are loaded separately (e.g. ADME data)
@@ -547,7 +554,7 @@ def main(
                     monitor=f"val/{monitor}", mode="min"
                 )
 
-            project_name = f"MSR_{data_set_name}_{splitter}"
+            project_name = f"MSR_REV_{data_set_name}_{splitter}"
             if project is not None:
                 project_name = project
 

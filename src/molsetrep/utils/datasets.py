@@ -259,6 +259,44 @@ def custom_molnet_loader(
     )
 
 
+def custom_molnet_loader_random(
+    name: str,
+    featurizer=None,
+    split_ratio=0.7,
+    seed=42,
+    task_name=None,
+    custom_path=None,
+    **kwargs,
+):
+    root_path = Path(__file__).resolve().parent
+    file_path = None
+    if custom_path is None:
+        file_path = Path(root_path, f"../../../data/moleculenet/{name}.csv.xz")
+    else:
+        file_path = Path(custom_path)
+
+    df = pd.read_csv(file_path)
+
+    # Drop NAs. Needed in Tox21
+    if name in ["tox21"]:
+        df = df.replace("", np.nan)
+        df = df.dropna(subset=[task_name])
+
+    train, valid, test = np.split(
+        df.sample(frac=1, random_state=42), [int(0.8 * len(df)), int(0.9 * len(df))]
+    )
+
+    tasks = molnet_tasks[name]
+
+    return (
+        CustomDataset.from_df(train, "smiles", tasks),
+        CustomDataset.from_df(valid, "smiles", tasks),
+        CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
 def adme_task_loader(name: str, featurizer=None, **kwargs):
     return ["HLM", "hPPB", "MDR1_ER", "RLM", "rPPB", "Sol"]
 

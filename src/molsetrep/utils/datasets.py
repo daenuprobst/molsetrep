@@ -192,14 +192,6 @@ molnet_tasks = {
 }
 
 
-def lrgb_task_loader(name: str, featurizer=None, **kwargs): ...
-
-
-def lrgb_loader(
-    name: str, featurizer=None, split_ratio=0.7, seed=42, task_name=None, **kwargs
-): ...
-
-
 def pdbbind_custom_task_loader(name: str, featurizer=None, **kwargs):
     return ["-logKd/Ki"]
 

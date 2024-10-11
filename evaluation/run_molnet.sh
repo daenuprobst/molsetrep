@@ -95,3 +95,6 @@
 # python ../scripts/molnet_test_runner.py qm9 gnn --monitor loss --splitter custom-scaffold --n 3 --max-epochs 150 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8
 # python ../scripts/molnet_test_runner.py qm9 srgnn --monitor loss --splitter custom-random --n 3 --max-epochs 150 --n-hidden-sets 128 --n-elements 64 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8 --custom-path /home/daenu/Code/molsetrep/data/moleculenet/qm9.csv.xz
 
+# python ../scripts/molnet_test_runner.py qm9 gnn --monitor loss --splitter custom-random --n 3 --max-epochs 150 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8 --custom-path /home/daenu/Code/molsetrep/data/moleculenet/qm9.csv.xz --task cv
+python ../scripts/molnet_test_runner.py qm9 gnn --monitor loss --splitter custom-random --n 1 --max-epochs 150 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8 --custom-path /home/daenu/Code/molsetrep/data/moleculenet/qm9.csv.xz --task cv
+python ../scripts/molnet_test_runner.py qm9 gnn --monitor loss --splitter custom-random --n 2 --max-epochs 150 --n-hidden-channels 128 --n-hidden-channels 64 --n-layers 8 --custom-path /home/daenu/Code/molsetrep/data/moleculenet/qm9.csv.xz --task alpha

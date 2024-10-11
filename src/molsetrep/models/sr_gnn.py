@@ -220,15 +220,15 @@ class LightningSRGNNClassifier(pl.LightningModule):
         # Metrics
         self.train_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.train_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.train_auprc = AUPRC(task="multiclass", num_classes=n_classes)
+        self.train_auprc = AUPRC(num_classes=n_classes)
         self.train_f1 = F1Score(task="multiclass", num_classes=n_classes)
         self.val_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.val_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.val_auprc = AUPRC(task="multiclass", num_classes=n_classes)
+        self.val_auprc = AUPRC(num_classes=n_classes)
         self.val_f1 = F1Score(task="multiclass", num_classes=n_classes)
         self.test_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
         self.test_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.test_auprc = AUPRC(task="multiclass", num_classes=n_classes)
+        self.test_auprc = AUPRC(num_classes=n_classes)
         self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
 
     def forward(self, x):

@@ -56,6 +56,7 @@ MANIFEST
 
 lightning_logs
 wandb
+example/tmp
 data_tmp
 data/pdbbind
 !data/pdbbind/.gitkeep

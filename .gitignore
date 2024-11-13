@@ -61,3 +61,5 @@ data/pdbbind
 !data/pdbbind/.gitkeep
 
 *.ckpt
+.ipynb_checkpoints
+*.tab

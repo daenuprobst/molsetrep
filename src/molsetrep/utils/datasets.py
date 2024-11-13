@@ -1,17 +1,17 @@
 import pickle
-from typing import List
 from dataclasses import dataclass
 from pathlib import Path
-import numpy as np
-import deepchem.molnet as mn
-import pandas as pd
+from typing import List
 
+import deepchem.molnet as mn
+import numpy as np
+import pandas as pd
 from deepchem.splits import RandomSplitter
 from deepchem.utils.rdkit_utils import load_molecule
-from sklearn.model_selection import KFold
-
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
+from sklearn.model_selection import KFold
+from tdc.single_pred import ADME
 
 
 @dataclass
@@ -292,6 +292,28 @@ def custom_molnet_loader_random(
         CustomDataset.from_df(train, "smiles", tasks),
         CustomDataset.from_df(valid, "smiles", tasks),
         CustomDataset.from_df(test, "smiles", tasks),
+        tasks,
+        [],
+    )
+
+
+def tdc_adme_task_loader(name: str, featurizer=None, **kwargs):
+    return ["Caco2_Wang"]
+
+
+def tdc_adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
+    task_name = kwargs.get("task_name", None)
+    print(task_name)
+
+    data = ADME(name=task_name)
+    split = data.get_split(method="scaffold")
+
+    tasks = ["Y"]
+
+    return (
+        CustomDataset.from_df(split["train"], "Drug", tasks),
+        CustomDataset.from_df(split["valid"], "Drug", tasks),
+        CustomDataset.from_df(split["test"], "Drug", tasks),
         tasks,
         [],
     )

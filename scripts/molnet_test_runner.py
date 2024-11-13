@@ -1,70 +1,68 @@
 import os
 import random
-from typing import List, Optional
 from multiprocessing import cpu_count
-import typer
-import torch
-import numpy as np
+from typing import List, Optional
+
 import lightning.pytorch as pl
-from torch.utils.data import DataLoader
-from wandb import finish as wandb_finish
+import numpy as np
+import torch
+import typer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import wandb
-
+from rdkit import RDLogger
 from sklearn.preprocessing import StandardScaler
-
-from molsetrep.utils.datasets import (
-    get_class_weights,
-    molnet_task_loader,
-    molnet_loader,
-    ocelot_loader,
-    ocelot_task_loader,
-    doyle_loader,
-    doyle_test_loader,
-    doyle_task_loader,
-    az_loader,
-    az_task_loader,
-    suzuki_loader,
-    suzuki_task_loader,
-    uspto_loader,
-    uspto_task_loader,
-    adme_loader,
-    adme_task_loader,
-    custom_molnet_loader,
-    custom_molnet_loader_random,
-    custom_molnet_task_loader,
-    pdbbind_custom_loader,
-    pdbbind_custom_task_loader,
-)
-
-from molsetrep.encoders import (
-    Encoder,
-    SingleSetEncoder,
-    DualSetEncoder,
-    LigandProtEncoder,
-    LigandProtPairEncoder,
-    GraphEncoder,
-    RXNSetEncoder,
-    RXNGraphEncoder,
-)
-from molsetrep.models import (
-    LightningSRClassifier,
-    LightningSRRegressor,
-    LightningDualSRClassifier,
-    LightningDualSRRegressor,
-    LightningTripleSRClassifier,
-    LightningTripleSRRegressor,
-    LightningGNNClassifier,
-    LightningGNNRegressor,
-    LightningSRGNNClassifier,
-    LightningSRGNNRegressor,
-)
-
+from torch.utils.data import DataLoader
 from torch_geometric.nn.models import GAT, GCN
 
 from molsetrep.data import PDBBindFeaturizer
-
-from rdkit import RDLogger
+from molsetrep.encoders import (
+    DualSetEncoder,
+    Encoder,
+    GraphEncoder,
+    LigandProtEncoder,
+    LigandProtPairEncoder,
+    RXNGraphEncoder,
+    RXNSetEncoder,
+    SingleSetEncoder,
+)
+from molsetrep.models import (
+    LightningDualSRClassifier,
+    LightningDualSRRegressor,
+    LightningGNNClassifier,
+    LightningGNNRegressor,
+    LightningSRClassifier,
+    LightningSRGNNClassifier,
+    LightningSRGNNRegressor,
+    LightningSRRegressor,
+    LightningTripleSRClassifier,
+    LightningTripleSRRegressor,
+)
+from molsetrep.utils.datasets import (
+    adme_loader,
+    adme_task_loader,
+    az_loader,
+    az_task_loader,
+    custom_molnet_loader,
+    custom_molnet_loader_random,
+    custom_molnet_task_loader,
+    doyle_loader,
+    doyle_task_loader,
+    doyle_test_loader,
+    get_class_weights,
+    molnet_loader,
+    molnet_task_loader,
+    ocelot_loader,
+    ocelot_task_loader,
+    pdbbind_custom_loader,
+    pdbbind_custom_task_loader,
+    suzuki_loader,
+    suzuki_task_loader,
+    tdc_adme_loader,
+    tdc_adme_task_loader,
+    uspto_loader,
+    uspto_task_loader,
+)
+from wandb import finish as wandb_finish
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -327,6 +325,10 @@ def main(
     if data_set_name == "adme":
         data_loader = adme_loader
         task_loader = adme_task_loader
+
+    if data_set_name == "tdc_adme":
+        data_loader = tdc_adme_loader
+        task_loader = tdc_adme_task_loader
 
     if data_set_name == "doyle":
         data_loader = doyle_loader

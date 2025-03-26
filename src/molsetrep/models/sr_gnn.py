@@ -1,27 +1,21 @@
 from typing import List, Optional
-import torch
+
 import lightning.pytorch as pl
-
-
-from torch.nn import CrossEntropyLoss
+import torch
 import torch.nn.functional as F
+from torch.nn import CrossEntropyLoss
 from torch_geometric.nn import GIN
 from torch_geometric.utils import unbatch
-
-from torchmetrics.classification import (
-    Accuracy,
-    AUROC,
-    F1Score,
-)
+from torchmetrics.classification import AUROC, Accuracy, F1Score
 from torchmetrics.regression import (
-    R2Score,
-    MeanSquaredError,
     MeanAbsoluteError,
+    MeanSquaredError,
     PearsonCorrCoef,
+    R2Score,
 )
 
-from molsetrep.models import GINE, MLP, SetRep, SetTransformer, DeepSet
 from molsetrep.metrics import AUPRC
+from molsetrep.models import GINE, MLP, DeepSet, SetRep, SetTransformer
 
 
 def graph_batch_to_set(X, batch, dim):

@@ -7,7 +7,7 @@ import lightning.pytorch as pl
 import numpy as np
 import torch
 import typer
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.loggers import wandb
 from rdkit import RDLogger
 from sklearn.preprocessing import StandardScaler
@@ -69,8 +69,6 @@ RDLogger.DisableLog("rdApp.*")
 app = typer.Typer(pretty_exceptions_enable=False)
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
 
-# torch.set_float32_matmul_precision("medium")
-
 
 def get_encoder(
     model_name: str,
@@ -119,6 +117,7 @@ def get_model(
     gnn_type: str = "gine",
     learning_rate: float = 0.001,
     n_layers: int = 6,
+    gnn_dropout: float = 0.0,
     **kwargs,
 ) -> torch.nn.Module:
     gnn_layer = None
@@ -160,7 +159,8 @@ def get_model(
             )
         else:
             raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
+                f"No task type '{task_type}' for model named"
+                + f" '{model_name}' available."
             )
     elif model_name == "srgnn":
         if task_type == "classification":
@@ -176,6 +176,7 @@ def get_model(
                 set_layer,
                 class_weights,
                 learning_rate,
+                gnn_dropout,
                 **kwargs,
             )
         elif task_type == "regression":
@@ -190,11 +191,13 @@ def get_model(
                 set_layer,
                 learning_rate,
                 scaler,
+                gnn_dropout,
                 **kwargs,
             )
         else:
             raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
+                f"No task type '{task_type}' for model named"
+                + f" '{model_name}' available."
             )
     elif model_name == "msr1":
         if task_type == "classification":
@@ -222,7 +225,8 @@ def get_model(
             )
         else:
             raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
+                f"No task type '{task_type}' for model named"
+                + f" '{model_name}' available."
             )
     elif model_name == "msr2":
         if task_type == "classification":
@@ -250,7 +254,8 @@ def get_model(
             )
         else:
             raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
+                f"No task type '{task_type}' for model named"
+                + f" '{model_name}' available."
             )
     elif model_name == "msr3":
         if task_type == "classification":
@@ -278,7 +283,8 @@ def get_model(
             )
         else:
             raise ValueError(
-                f"No task type '{task_type}' for model named '{model_name}' available."
+                f"No task type '{task_type}' for model named"
+                + f" '{model_name}' available."
             )
     else:
         raise ValueError(f"No model named '{model_name}' available.")
@@ -299,6 +305,7 @@ def main(
     n_elements: Optional[List[int]] = None,
     n_hidden_channels: Optional[List[int]] = None,
     n_layers: int = 6,
+    gnn_dropout: float = 0.0,
     learning_rate: float = 0.001,
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
@@ -367,7 +374,8 @@ def main(
         data_loader = custom_molnet_loader_random
         task_loader = custom_molnet_task_loader
 
-    tasks = task_loader(data_set_name, featurizer=featurizer, set_name=set_name)
+    tasks = task_loader(
+        data_set_name, featurizer=featurizer, set_name=set_name)
     print(f'\nDataset "{data_set_name}" contains {len(tasks)} task(s).')
 
     label_dtype = torch.long
@@ -430,13 +438,14 @@ def main(
 
             if task_type == "regression":
                 scaler = StandardScaler()
-                scaler.fit(np.concatenate((train_y, valid_y, test_y)).reshape(-1, 1))
+                scaler.fit(train_y.reshape(-1, 1))
 
                 train_y = scaler.transform(train_y.reshape(-1, 1)).flatten()
                 valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
                 test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
 
-            enc = get_encoder(model_name, data_set_name, charges, pdbbind_radius)
+            enc = get_encoder(model_name, data_set_name,
+                              charges, pdbbind_radius)
 
             train_dataset = enc.encode(
                 (
@@ -459,7 +468,8 @@ def main(
                 batch_size=batch_size,
             )
             test_dataset = enc.encode(
-                test.X if data_set_name in ["pdbbind", "pdbbind-custom"] else test.ids,
+                test.X if data_set_name in [
+                    "pdbbind", "pdbbind-custom"] else test.ids,
                 test_y,
                 label_dtype=label_dtype,
                 batch_size=batch_size,
@@ -538,14 +548,19 @@ def main(
                 scaler=scaler,
                 n_hidden_channels=n_hidden_channels,
                 gnn_type=gnn_type,
+                gnn_dropout=gnn_dropout,
                 set_layer=set_layer,
                 n_layers=n_layers,
             )
 
             if monitor is None:
-                monitor = "auroc" if task_type == "classification" else "rmse"
+                monitor = "auroc" if task_type == "classification" else "mae"
 
-            checkpoint_callback = ModelCheckpoint(monitor=f"val/{monitor}", mode="max")
+            checkpoint_callback = ModelCheckpoint(
+                monitor=f"val/{monitor}", mode="max")
+            learning_rate_callback = LearningRateMonitor(
+                logging_interval="step")
+
             if task_type == "regression":
                 checkpoint_callback = ModelCheckpoint(
                     monitor=f"val/{monitor}", mode="min"
@@ -573,13 +588,14 @@ def main(
                     "split_ratio": split_ratio,
                     "set_layer": set_layer,
                     "gnn_type": gnn_type,
+                    "gnn_dropout": gnn_dropout,
                     "pdbbind_radius": pdbbind_radius,
                 }
             )
             wandb_logger.watch(model, log="all")
 
             trainer = pl.Trainer(
-                callbacks=[checkpoint_callback],
+                callbacks=[checkpoint_callback, learning_rate_callback],
                 max_epochs=max_epochs,
                 log_every_n_steps=1,
                 logger=wandb_logger,

@@ -49,12 +49,12 @@ def one_hot_encode(prop: Any, vals: Union[int, Iterable[int]]):
 
 def get_atomic_invariants_as_dict(atom, charges: bool = True):
     invariants = get_atomic_invariants(atom, charges)
-    return {f"node_{i}": v for i, v, in enumerate(invariants)}
+    return {f"node_{i}": v for i, v in enumerate(invariants)}
 
 
 def get_bond_invariants_as_dict(bond):
     invariants = get_bond_invariants(bond)
-    return {f"edge_{i}": v for i, v, in enumerate(invariants)}
+    return {f"edge_{i}": v for i, v in enumerate(invariants)}
 
 
 def get_atomic_invariants(atom, charges: bool = True, max_atomic_num: int = 100):

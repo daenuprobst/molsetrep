@@ -45,7 +45,8 @@ def _generate_scaffold(smiles, include_chirality=False):
     if mol is None:
         return None
 
-    scaffold = MurckoScaffoldSmiles(mol=mol, includeChirality=include_chirality)
+    scaffold = MurckoScaffoldSmiles(
+        mol=mol, includeChirality=include_chirality)
     return scaffold
 
 
@@ -283,7 +284,8 @@ def custom_molnet_loader_random(
         df = df.dropna(subset=[task_name])
 
     train, valid, test = np.split(
-        df.sample(frac=1, random_state=42), [int(0.8 * len(df)), int(0.9 * len(df))]
+        df.sample(frac=1, random_state=42), [
+            int(0.8 * len(df)), int(0.9 * len(df))]
     )
 
     tasks = molnet_tasks[name]
@@ -298,7 +300,7 @@ def custom_molnet_loader_random(
 
 
 def tdc_adme_task_loader(name: str, featurizer=None, **kwargs):
-    return ["Caco2_Wang"]
+    return ["Solubility_AqSolDB"]
 
 
 def tdc_adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
@@ -328,8 +330,10 @@ def adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):
     print(task_name)
 
     root_path = Path(__file__).resolve().parent
-    adme_train_file = Path(root_path, f"../../../data/adme/ADME_{task_name}_train.csv")
-    adme_test_file = Path(root_path, f"../../../data/adme/ADME_{task_name}_test.csv")
+    adme_train_file = Path(
+        root_path, f"../../../data/adme/ADME_{task_name}_train.csv")
+    adme_test_file = Path(
+        root_path, f"../../../data/adme/ADME_{task_name}_test.csv")
 
     train = pd.read_csv(adme_train_file)
     test = pd.read_csv(adme_test_file)
@@ -356,7 +360,8 @@ def uspto_task_loader(name: str, featurizer=None, **kwargs):
 
 def uspto_loader(name: str, featurizer=None, seed=42, **kwargs):
     root_path = Path(__file__).resolve().parent
-    uspto_path = Path(root_path, "../../../data/uspto/uspto_yields_above.csv.xz")
+    uspto_path = Path(
+        root_path, "../../../data/uspto/uspto_yields_above.csv.xz")
 
     df = pd.read_csv(uspto_path)
 
@@ -528,7 +533,8 @@ def doyle_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs)
 
 def ocelot_task_loader(name: str, featurizer=None, **kwargs):
     root_path = Path(__file__).resolve().parent
-    df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
+    df = pd.read_csv(
+        Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)
     return col_names[1:-1]
 
@@ -536,7 +542,8 @@ def ocelot_task_loader(name: str, featurizer=None, **kwargs):
 def ocelot_loader(name: str, featurizer=None, seed=42, **kwargs):
     fold_idx = kwargs.get("fold_idx", 0)
     root_path = Path(__file__).resolve().parent
-    df = pd.read_csv(Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
+    df = pd.read_csv(
+        Path(root_path, "../../../data/ocelot_chromophore_v1.tar.xz"))
     col_names = list(df.columns)
     tasks = col_names[1:-1]
 

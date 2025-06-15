@@ -1,10 +1,15 @@
 from typing import List, Optional
-
 import lightning.pytorch as pl
 import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from torch_geometric.nn import GIN
+from torch_geometric.nn import (
+    GIN,
+    GAT,
+    global_mean_pool,
+    global_max_pool,
+    global_sort_pool,
+)
 from torch_geometric.utils import unbatch
 from torchmetrics.classification import AUROC, Accuracy, F1Score
 from torchmetrics.regression import (
@@ -24,7 +29,8 @@ def graph_batch_to_set(X, batch, dim):
     batch_size = len(out_unbatched)
     max_cardinality = max([b.shape[0] for b in out_unbatched])
 
-    X_set = torch.zeros((batch_size, max_cardinality, dim), device=batch.x.device)
+    X_set = torch.zeros((batch_size, max_cardinality, dim),
+                        device=batch.x.device)
 
     for i, b in enumerate(out_unbatched):
         X_set[i, : b.shape[0], :] = b
@@ -43,6 +49,7 @@ class SRGNNClassifier(torch.nn.Module):
         n_hidden_channels: Optional[List] = None,
         n_classes: int = 2,
         gnn: Optional[torch.nn.Module] = None,
+        gnn_dropout: float = 0.0,
         set_layer: str = "setrep",
     ):
         super(SRGNNClassifier, self).__init__()
@@ -53,6 +60,7 @@ class SRGNNClassifier(torch.nn.Module):
         self.n_hidden_channels = n_hidden_channels
         self.in_edge_channels = in_edge_channels
         self.gnn = gnn
+        self.gnn_dropout = gnn_dropout
 
         if self.gnn is None:
             if self.in_edge_channels > 0:
@@ -61,10 +69,16 @@ class SRGNNClassifier(torch.nn.Module):
                     n_hidden_channels[0],
                     num_layers,
                     edge_dim=in_edge_channels,
-                    jk="cat",
+                    jk="lstm",
+                    dropout=self.gnn_dropout,
                 )
             else:
-                self.gnn = GIN(in_channels, self.n_hidden_channels[0], num_layers)
+                self.gnn = GIN(
+                    in_channels,
+                    self.n_hidden_channels[0],
+                    num_layers,
+                    dropout=self.gnn_dropout,
+                )
 
         if set_layer == "setrep":
             self.set_rep = SetRep(
@@ -84,7 +98,9 @@ class SRGNNClassifier(torch.nn.Module):
         else:
             raise ValueError(f"Set layer '{set_layer}' not implemented.")
 
-        self.mlp = MLP(self.n_hidden_channels[0], self.n_hidden_channels[1], n_classes)
+        self.mlp = MLP(
+            self.n_hidden_channels[0] * 2, self.n_hidden_channels[1], n_classes
+        )
 
     def forward(self, batch):
         if self.in_edge_channels > 0:
@@ -94,9 +110,10 @@ class SRGNNClassifier(torch.nn.Module):
         else:
             out = self.gnn(batch.x.float(), batch.edge_index)
 
+        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
-        out = self.mlp(t)
+        out = self.mlp(torch.cat((t, p), -1))
 
         return F.log_softmax(out, dim=1)
 
@@ -112,6 +129,7 @@ class SRGNNRegressor(torch.nn.Module):
         n_hidden_channels: Optional[List] = None,
         gnn: Optional[torch.nn.Module] = None,
         set_layer: str = "setrep",
+        gnn_dropout: float = 0.0,
     ):
         super(SRGNNRegressor, self).__init__()
 
@@ -121,18 +139,27 @@ class SRGNNRegressor(torch.nn.Module):
         self.n_hidden_channels = n_hidden_channels
         self.in_edge_channels = in_edge_channels
         self.gnn = gnn
+        self.gnn_dropout = gnn_dropout
 
         if self.gnn is None:
             if self.in_edge_channels > 0:
-                self.gnn = GINE(
+                self.gnn = GAT(
                     in_channels,
                     n_hidden_channels[0],
                     num_layers,
                     edge_dim=in_edge_channels,
-                    jk="cat",
+                    jk="lstm",
+                    dropout=self.gnn_dropout,
+                    v2=True,
+                    residual=True,
                 )
             else:
-                self.gnn = GIN(in_channels, n_hidden_channels[0], num_layers)
+                self.gnn = GIN(
+                    in_channels,
+                    n_hidden_channels[0],
+                    num_layers,
+                    dropout=self.gnn_dropout,
+                )
 
         if set_layer == "setrep":
             self.set_rep = SetRep(
@@ -152,7 +179,7 @@ class SRGNNRegressor(torch.nn.Module):
         else:
             raise ValueError(f"Set layer '{set_layer}' not implemented.")
 
-        self.mlp = MLP(n_hidden_channels[0], n_hidden_channels[1], 1)
+        self.mlp = MLP(n_hidden_channels[0] * 2, n_hidden_channels[1], 1)
 
     def forward(self, batch):
         if self.in_edge_channels > 0:
@@ -162,9 +189,10 @@ class SRGNNRegressor(torch.nn.Module):
         else:
             out = self.gnn(batch.x.float(), batch.edge_index)
 
+        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
-        out = self.mlp(t)
+        out = self.mlp(torch.cat((t, p), -1))
 
         return out.squeeze(1)
 
@@ -183,6 +211,7 @@ class LightningSRGNNClassifier(pl.LightningModule):
         set_layer: str = "setrep",
         class_weights: Optional[List] = None,
         learning_rate: float = 0.001,
+        gnn_dropout: float = 0.0,
     ) -> None:
         super(LightningSRGNNClassifier, self).__init__()
         self.save_hyperparameters()
@@ -199,6 +228,7 @@ class LightningSRGNNClassifier(pl.LightningModule):
             n_hidden_channels,
             n_classes,
             gnn=gnn_layer,
+            gnn_dropout=0.0,
             set_layer=set_layer,
         )
 
@@ -212,7 +242,8 @@ class LightningSRGNNClassifier(pl.LightningModule):
         self.criterion_eval = CrossEntropyLoss()
 
         # Metrics
-        self.train_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
+        self.train_accuracy = Accuracy(
+            task="multiclass", num_classes=n_classes)
         self.train_auroc = AUROC(task="multiclass", num_classes=n_classes)
         self.train_auprc = AUPRC(task="multiclass", num_classes=n_classes)
         self.train_f1 = F1Score(task="multiclass", num_classes=n_classes)
@@ -240,7 +271,8 @@ class LightningSRGNNClassifier(pl.LightningModule):
         self.train_auprc(out, y)
         self.train_f1(out, y)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("train/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "train/acc",
             self.train_accuracy,
@@ -280,7 +312,8 @@ class LightningSRGNNClassifier(pl.LightningModule):
         self.val_auprc(out, y)
         self.val_f1(out, y)
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("val/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "val/acc",
             self.val_accuracy,
@@ -294,7 +327,8 @@ class LightningSRGNNClassifier(pl.LightningModule):
         self.log(
             "val/auprc", self.val_auprc, on_step=False, on_epoch=True, batch_size=len(y)
         )
-        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("val/f1", self.val_f1, on_step=False,
+                 on_epoch=True, batch_size=len(y))
 
     def test_step(self, test_batch, batch_idx):
         y = test_batch.y
@@ -308,7 +342,8 @@ class LightningSRGNNClassifier(pl.LightningModule):
         self.test_auprc(out, y)
         self.test_f1(out, y)
 
-        self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("test/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "test/acc",
             self.test_accuracy,
@@ -335,7 +370,24 @@ class LightningSRGNNClassifier(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        return optimizer
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+        # scheduler_config = {
+        #     "scheduler": scheduler,
+        #     "interval": "epoch",
+        #     "frequency": 1,
+        #     "monitor": "val_loss",
+        #     # If set to `True`, will enforce that the value specified 'monitor'
+        #     # is available when the scheduler is updated, thus stopping
+        #     # training if not found. If set to `False`, it will only produce a warning
+        #     "strict": True,
+        #     # If using the `LearningRateMonitor` callback to monitor the
+        #     # learning rate progress, this keyword can be used to specify
+        #     # a custom logged name
+        #     "name": "learning_rate",
+        # }
+        # return [optimizer], [scheduler_config]
 
 
 class LightningSRGNNRegressor(pl.LightningModule):
@@ -351,6 +403,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
         set_layer: str = "setrep",
         learning_rate: float = 0.001,
         scaler: Optional[any] = None,
+        gnn_dropout: float = 0.0,
     ) -> None:
         super(LightningSRGNNRegressor, self).__init__()
         self.save_hyperparameters()
@@ -366,6 +419,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
             n_edge_channels,
             n_hidden_channels,
             gnn=gnn_layer,
+            gnn_dropout=gnn_dropout,
             set_layer=set_layer,
         )
 
@@ -390,7 +444,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
         y = batch.y
 
         out = self(batch)
-        loss = F.mse_loss(out, y)
+        loss = F.l1_loss(out, y)
 
         if self.scaler:
             out = torch.FloatTensor(
@@ -399,7 +453,8 @@ class LightningSRGNNRegressor(pl.LightningModule):
                 ).flatten()
             )
             y = torch.FloatTensor(
-                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+                self.scaler.inverse_transform(
+                    y.detach().cpu().reshape(-1, 1)).flatten()
             )
 
         # Metrics
@@ -408,7 +463,8 @@ class LightningSRGNNRegressor(pl.LightningModule):
         self.train_rmse(out, y)
         self.train_mae(out, y)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("train/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "train/r2", self.train_r2, on_step=False, on_epoch=True, batch_size=len(y)
         )
@@ -436,7 +492,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
         y = val_batch.y
 
         out = self(val_batch)
-        loss = F.mse_loss(out, y)
+        loss = F.l1_loss(out, y)
 
         if self.scaler:
             out = torch.FloatTensor(
@@ -445,7 +501,8 @@ class LightningSRGNNRegressor(pl.LightningModule):
                 ).flatten()
             )
             y = torch.FloatTensor(
-                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+                self.scaler.inverse_transform(
+                    y.detach().cpu().reshape(-1, 1)).flatten()
             )
 
         # Metrics
@@ -454,8 +511,10 @@ class LightningSRGNNRegressor(pl.LightningModule):
         self.val_rmse(out, y)
         self.val_mae(out, y)
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
-        self.log("val/r2", self.val_r2, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("val/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
+        self.log("val/r2", self.val_r2, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "val/pearson",
             self.val_pearson,
@@ -474,7 +533,7 @@ class LightningSRGNNRegressor(pl.LightningModule):
         y = test_batch.y
 
         out = self(test_batch)
-        loss = F.mse_loss(out, y)
+        loss = F.l1_loss(out, y)
 
         if self.scaler:
             out = torch.FloatTensor(
@@ -483,7 +542,8 @@ class LightningSRGNNRegressor(pl.LightningModule):
                 ).flatten()
             )
             y = torch.FloatTensor(
-                self.scaler.inverse_transform(y.detach().cpu().reshape(-1, 1)).flatten()
+                self.scaler.inverse_transform(
+                    y.detach().cpu().reshape(-1, 1)).flatten()
             )
 
         # Metrics
@@ -492,7 +552,8 @@ class LightningSRGNNRegressor(pl.LightningModule):
         self.test_rmse(out, y)
         self.test_mae(out, y)
 
-        self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
+        self.log("test/loss", loss, on_step=False,
+                 on_epoch=True, batch_size=len(y))
         self.log(
             "test/r2", self.test_r2, on_step=False, on_epoch=True, batch_size=len(y)
         )

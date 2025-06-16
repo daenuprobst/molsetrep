@@ -118,6 +118,24 @@ class SRGNNClassifier(torch.nn.Module):
         return F.log_softmax(out, dim=1)
 
 
+class AttentionFusion(torch.nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.attn_mlp = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim * 2, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dim, 1),
+            torch.nn.Sigmoid(),
+        )
+
+    def forward(self, t, p):
+        # t and p: [batch_size, hidden_dim]
+        joint = torch.cat([t, p], dim=-1)
+        alpha = self.attn_mlp(joint)  # [batch_size, 1]
+        fused = alpha * t + (1 - alpha) * p
+        return fused
+
+
 class SRGNNRegressor(torch.nn.Module):
     def __init__(
         self,
@@ -148,7 +166,8 @@ class SRGNNRegressor(torch.nn.Module):
                     n_hidden_channels[0],
                     num_layers,
                     edge_dim=in_edge_channels,
-                    jk="lstm",
+                    act="leakyrelu",
+                    jk="cat",
                     dropout=self.gnn_dropout,
                     v2=True,
                     residual=True,
@@ -192,6 +211,7 @@ class SRGNNRegressor(torch.nn.Module):
         p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
+
         out = self.mlp(torch.cat((t, p), -1))
 
         return out.squeeze(1)

@@ -300,7 +300,8 @@ def custom_molnet_loader_random(
 
 
 def tdc_adme_task_loader(name: str, featurizer=None, **kwargs):
-    return ["Solubility_AqSolDB"]
+    # return ["Solubility_AqSolDB"]
+    return ["Lipophilicity_AstraZeneca"]
 
 
 def tdc_adme_loader(name: str, featurizer=None, split_ratio=0.7, seed=42, **kwargs):

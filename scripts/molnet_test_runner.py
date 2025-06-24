@@ -8,7 +8,7 @@ import numpy as np
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 from wandb import finish as wandb_finish
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.loggers import wandb
 
 from sklearn.preprocessing import StandardScaler
@@ -33,6 +33,8 @@ from molsetrep.utils.datasets import (
     custom_molnet_loader,
     custom_molnet_loader_random,
     custom_molnet_task_loader,
+    tdc_adme_loader,
+    tdc_adme_task_loader,
     pdbbind_custom_loader,
     pdbbind_custom_task_loader,
 )
@@ -56,8 +58,8 @@ from molsetrep.models import (
     LightningTripleSRRegressor,
     LightningGNNClassifier,
     LightningGNNRegressor,
-    LightningSRGNNClassifier,
-    LightningSRGNNRegressor,
+    LightningSRGNNClassifierV2 as LightningSRGNNClassifier,
+    LightningSRGNNRegressorV2 as LightningSRGNNRegressor,
 )
 
 from torch_geometric.nn.models import GAT, GCN
@@ -79,6 +81,7 @@ def get_encoder(
     data_set_name: str,
     charges: bool = True,
     pdbbind_radius: float = 5.5,
+    descriptors: bool = False,
 ) -> Encoder:
     if data_set_name in [
         "doyle",
@@ -102,7 +105,7 @@ def get_encoder(
     elif model_name == "msr2":
         return DualSetEncoder(charges=charges)
     elif model_name == "gnn" or model_name == "srgnn":
-        return GraphEncoder(charges=charges)
+        return GraphEncoder(charges=charges, descriptors=descriptors)
     else:
         raise ValueError(f"No model named '{model_name}' available.")
 
@@ -121,6 +124,15 @@ def get_model(
     gnn_type: str = "gine",
     learning_rate: float = 0.001,
     n_layers: int = 6,
+    gnn_dropout: float = 0.0,
+    node_encoder_out: int = 0,
+    edge_encoder_out: int = 0,
+    descriptors: bool = False,
+    n_descriptors: int = 200,
+    descriptor_mlp: bool = True,
+    descriptor_mlp_dropout: float = 0.25,
+    descriptor_mlp_bn: bool = True,
+    descriptor_mlp_out: int = 32,
     **kwargs,
 ) -> torch.nn.Module:
     gnn_layer = None
@@ -178,6 +190,15 @@ def get_model(
                 set_layer,
                 class_weights,
                 learning_rate,
+                gnn_dropout=gnn_dropout,
+                node_encoder_out=node_encoder_out,
+                edge_encoder_out=edge_encoder_out,
+                descriptors=descriptors,
+                n_descriptors=n_descriptors,
+                descriptor_mlp=descriptor_mlp,
+                descriptor_mlp_dropout=descriptor_mlp_dropout,
+                descriptor_mlp_bn=descriptor_mlp_bn,
+                descriptor_mlp_out=descriptor_mlp_out,
                 **kwargs,
             )
         elif task_type == "regression":
@@ -192,6 +213,15 @@ def get_model(
                 set_layer,
                 learning_rate,
                 scaler,
+                gnn_dropout=gnn_dropout,
+                node_encoder_out=node_encoder_out,
+                edge_encoder_out=edge_encoder_out,
+                descriptors=descriptors,
+                n_descriptors=n_descriptors,
+                descriptor_mlp=descriptor_mlp,
+                descriptor_mlp_dropout=descriptor_mlp_dropout,
+                descriptor_mlp_bn=descriptor_mlp_bn,
+                descriptor_mlp_out=descriptor_mlp_out,
                 **kwargs,
             )
         else:
@@ -305,6 +335,15 @@ def main(
     monitor: Optional[str] = None,
     set_layer: str = "setrep",
     gnn_type: str = "gine",
+    gnn_dropout: float = 0.0,
+    node_encoder_out: int = 0,
+    edge_encoder_out: int = 0,
+    descriptors: bool = False,
+    n_descriptors: int = 200,
+    descriptor_mlp: bool = True,
+    descriptor_mlp_dropout: float = 0.25,
+    descriptor_mlp_bn: bool = True,
+    descriptor_mlp_out: int = 32,
     charges: bool = False,
     project: Optional[str] = None,
     variant: Optional[str] = None,
@@ -327,6 +366,10 @@ def main(
     if data_set_name == "adme":
         data_loader = adme_loader
         task_loader = adme_task_loader
+
+    if data_set_name == "tdc_adme":
+        data_loader = tdc_adme_loader
+        task_loader = tdc_adme_task_loader
 
     if data_set_name == "doyle":
         data_loader = doyle_loader
@@ -428,13 +471,15 @@ def main(
 
             if task_type == "regression":
                 scaler = StandardScaler()
-                scaler.fit(np.concatenate((train_y, valid_y, test_y)).reshape(-1, 1))
+                scaler.fit(train_y.reshape(-1, 1))
 
                 train_y = scaler.transform(train_y.reshape(-1, 1)).flatten()
                 valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
                 test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
 
-            enc = get_encoder(model_name, data_set_name, charges, pdbbind_radius)
+            enc = get_encoder(
+                model_name, data_set_name, charges, pdbbind_radius, descriptors
+            )
 
             train_dataset = enc.encode(
                 (
@@ -538,12 +583,23 @@ def main(
                 gnn_type=gnn_type,
                 set_layer=set_layer,
                 n_layers=n_layers,
+                gnn_dropout=gnn_dropout,
+                node_encoder_out=node_encoder_out,
+                edge_encoder_out=edge_encoder_out,
+                descriptors=descriptors,
+                n_descriptors=n_descriptors,
+                descriptor_mlp=descriptor_mlp,
+                descriptor_mlp_dropout=descriptor_mlp_dropout,
+                descriptor_mlp_bn=descriptor_mlp_bn,
+                descriptor_mlp_out=descriptor_mlp_out,
             )
 
             if monitor is None:
-                monitor = "auroc" if task_type == "classification" else "rmse"
+                monitor = "auroc" if task_type == "classification" else "mae"
 
             checkpoint_callback = ModelCheckpoint(monitor=f"val/{monitor}", mode="max")
+            learning_rate_callback = LearningRateMonitor(logging_interval="step")
+
             if task_type == "regression":
                 checkpoint_callback = ModelCheckpoint(
                     monitor=f"val/{monitor}", mode="min"
@@ -571,13 +627,22 @@ def main(
                     "split_ratio": split_ratio,
                     "set_layer": set_layer,
                     "gnn_type": gnn_type,
+                    "gnn_dropout": gnn_dropout,
+                    "node_encoder_out": node_encoder_out,
+                    "edge_encoder_out": edge_encoder_out,
+                    "descriptors": descriptors,
+                    "n_descriptors": n_descriptors,
+                    "descriptor_mlp": descriptor_mlp,
+                    "descriptor_mlp_dropout": descriptor_mlp_dropout,
+                    "descriptor_mlp_bn": descriptor_mlp_bn,
+                    "descriptor_mlp_out": descriptor_mlp_out,
                     "pdbbind_radius": pdbbind_radius,
                 }
             )
             wandb_logger.watch(model, log="all")
 
             trainer = pl.Trainer(
-                callbacks=[checkpoint_callback],
+                callbacks=[checkpoint_callback, learning_rate_callback],
                 max_epochs=max_epochs,
                 log_every_n_steps=1,
                 logger=wandb_logger,

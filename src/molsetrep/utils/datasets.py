@@ -194,8 +194,11 @@ molnet_tasks = {
 
 def tdc_adme_task_loader(name: str, featurizer=None, **kwargs):
     # return ["Solubility_AqSolDB"]
-    return ["Lipophilicity_AstraZeneca"]
+    # return ["Lipophilicity_AstraZeneca"]
     # return ["PPBR_AZ"]
+    # return ["Bioavailability_Ma"]
+    # return ["CYP2C9_Veith"]
+    return ["CYP3A4_Substrate_CarbonMangels"]
 
 
 def tdc_adme_loader(

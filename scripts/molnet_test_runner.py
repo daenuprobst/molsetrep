@@ -642,7 +642,7 @@ def main(
             wandb_logger.watch(model, log="all")
 
             trainer = pl.Trainer(
-                callbacks=[checkpoint_callback, learning_rate_callback],
+                callbacks=[checkpoint_callback],
                 max_epochs=max_epochs,
                 log_every_n_steps=1,
                 logger=wandb_logger,

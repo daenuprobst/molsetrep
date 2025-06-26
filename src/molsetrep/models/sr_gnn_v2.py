@@ -19,7 +19,7 @@ from torchmetrics.regression import (
 )
 
 from molsetrep.metrics import AUPRC
-from molsetrep.models import GINE, MLP, DeepSet, SetRep, SetTransformer
+from molsetrep.models import MLP, DeepSet, SetRep, SetTransformer
 
 
 def graph_batch_to_set(X, batch, dim):
@@ -49,53 +49,57 @@ class SRGNNClassifierV2(torch.nn.Module):
         gnn: Optional[torch.nn.Module] = None,
         set_layer: str = "setrep",
         gnn_dropout: float = 0.0,
+        node_encoder_out: int = 0,
+        edge_encoder_out: int = 0,
         descriptors: bool = False,
         n_descriptors: int = 200,
+        descriptor_mlp: bool = True,
+        descriptor_mlp_dropout: float = 0.25,
+        descriptor_mlp_bn: bool = True,
+        descriptor_mlp_out: int = 32,
     ):
         super(SRGNNClassifierV2, self).__init__()
 
         if n_hidden_channels is None or len(n_hidden_channels) < 2:
             n_hidden_channels = [32, 16]
 
+        self.channels = in_channels if node_encoder_out == 0 else node_encoder_out
+
+        self.edge_channels = (
+            in_edge_channels if edge_encoder_out == 0 else edge_encoder_out
+        )
+
         self.n_hidden_channels = n_hidden_channels
-        self.in_edge_channels = in_edge_channels
         self.gnn = gnn
         self.gnn_dropout = gnn_dropout
         self.descriptors = descriptors
+        self.descriptor_mlp = descriptor_mlp
 
-        self.node_encoder = torch.nn.Linear(in_channels, in_channels)
-        self.edge_encoder = torch.nn.Linear(in_edge_channels, in_edge_channels)
+        self.node_encoder = torch.nn.Linear(in_channels, self.channels)
+        self.edge_encoder = torch.nn.Linear(in_edge_channels, self.edge_channels)
 
-        if self.descriptors:
-            self.descriptor_encoder = torch.nn.Linear(n_descriptors, n_descriptors)
-            self.desc_mlp = MLP(n_descriptors, n_descriptors // 2, 32, dropout=0.5)
+        if self.descriptors and self.descriptor_mlp:
+            self.desc_mlp = MLP(
+                n_descriptors,
+                n_descriptors // 2,
+                descriptor_mlp_out,
+                dropout=descriptor_mlp_dropout,
+                bn=descriptor_mlp_bn,
+            )
 
         if self.gnn is None:
-            if self.in_edge_channels > 0:
-                self.gnn = GAT(
-                    in_channels,
-                    n_hidden_channels[0],
-                    num_layers,
-                    edge_dim=in_edge_channels,
-                    act="leakyrelu",
-                    jk="cat",
-                    dropout=self.gnn_dropout,
-                    v2=True,
-                    residual=True,
-                    heads=2,
-                )
-            else:
-                self.gnn = GAT(
-                    in_channels,
-                    n_hidden_channels[0],
-                    num_layers,
-                    act="leakyrelu",
-                    jk="cat",
-                    dropout=self.gnn_dropout,
-                    v2=True,
-                    residual=True,
-                    heads=2,
-                )
+            self.gnn = GAT(
+                in_channels,
+                n_hidden_channels[0],
+                num_layers,
+                edge_dim=in_edge_channels,
+                act="leakyrelu",
+                jk="cat",
+                dropout=self.gnn_dropout,
+                v2=True,
+                residual=True,
+                heads=2,
+            )
 
         if set_layer == "setrep":
             self.set_rep = SetRep(
@@ -119,20 +123,40 @@ class SRGNNClassifierV2(torch.nn.Module):
             self.n_hidden_channels[0] * 2, self.n_hidden_channels[1], n_classes
         )
 
-    def forward(self, batch):
-        if self.in_edge_channels > 0:
-            out = self.gnn(
-                batch.x.float(), batch.edge_index, edge_attr=batch.edge_attr.float()
-            )
-        else:
-            out = self.gnn(batch.x.float(), batch.edge_index)
+    def forward_no_desc(self, batch):
+        x = self.node_encoder(batch.x.float())
+        e = self.edge_encoder(batch.edge_attr.float())
+
+        out = self.gnn(x, batch.edge_index, edge_attr=e)
 
         p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
+
         out = self.mlp(torch.cat((t, p), -1))
 
         return F.log_softmax(out, dim=1)
+
+    def forward_desc(self, batch):
+        x = self.node_encoder(batch.x.float())
+        e = self.edge_encoder(batch.edge_attr.float())
+        d = self.desc_mlp(batch.descriptors)
+
+        out = self.gnn(x, batch.edge_index, edge_attr=e)
+
+        p = global_mean_pool(out, batch.batch)
+        t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
+        t = self.set_rep(t)
+
+        out = self.mlp(torch.cat((t, p, d), -1))
+
+        return F.log_softmax(out, dim=1)
+
+    def forward(self, batch):
+        if self.descriptors:
+            return self.forward_desc(batch)
+
+        return self.forward_no_desc(batch)
 
 
 class SRGNNRegressorV2(torch.nn.Module):
@@ -302,8 +326,16 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
             n_hidden_channels,
             n_classes,
             gnn=gnn_layer,
-            gnn_dropout=0.0,
             set_layer=set_layer,
+            gnn_dropout=gnn_dropout,
+            node_encoder_out=node_encoder_out,
+            edge_encoder_out=edge_encoder_out,
+            descriptors=descriptors,
+            n_descriptors=n_descriptors,
+            descriptor_mlp=descriptor_mlp,
+            descriptor_mlp_dropout=descriptor_mlp_dropout,
+            descriptor_mlp_bn=descriptor_mlp_bn,
+            descriptor_mlp_out=descriptor_mlp_out,
         )
 
         # Criterions

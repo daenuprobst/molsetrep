@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torch_geometric.nn import (
     GAT,
-    GIN,
     global_mean_pool,
 )
 from torch_geometric.utils import unbatch
@@ -15,6 +14,7 @@ from torchmetrics.regression import (
     MeanAbsoluteError,
     MeanSquaredError,
     PearsonCorrCoef,
+    SpearmanCorrCoef,
     R2Score,
 )
 
@@ -357,7 +357,10 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         self.val_auprc = AUPRC(task="multiclass", num_classes=n_classes)
         self.val_f1 = F1Score(task="multiclass", num_classes=n_classes)
         self.test_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
-        self.test_auroc = AUROC(task="multiclass", num_classes=n_classes)
+        # TODO: Something isn't right here...
+        self.test_auroc = AUROC(
+            "binary"
+        )  # AUROC(task="multiclass", num_classes=n_classes)
         self.test_auprc = AUPRC(task="multiclass", num_classes=n_classes)
         self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
 
@@ -527,14 +530,17 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         # Metrics
         self.train_r2 = R2Score()
         self.train_pearson = PearsonCorrCoef()
+        self.train_spearman = SpearmanCorrCoef()
         self.train_rmse = MeanSquaredError(squared=False)
         self.train_mae = MeanAbsoluteError()
         self.val_r2 = R2Score()
         self.val_pearson = PearsonCorrCoef()
+        self.val_spearman = SpearmanCorrCoef()
         self.val_rmse = MeanSquaredError(squared=False)
         self.val_mae = MeanAbsoluteError()
         self.test_r2 = R2Score()
         self.test_pearson = PearsonCorrCoef()
+        self.test_spearman = SpearmanCorrCoef()
         self.test_rmse = MeanSquaredError(squared=False)
         self.test_mae = MeanAbsoluteError()
 
@@ -560,6 +566,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         # Metrics
         self.train_r2(out, y)
         self.train_pearson(out.to(self.device), y.to(self.device))
+        self.train_spearman(out.to(self.device), y.to(self.device))
         self.train_rmse(out, y)
         self.train_mae(out, y)
 
@@ -570,6 +577,13 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         self.log(
             "train/pearson",
             self.train_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "train/spearman",
+            self.train_spearman,
             on_step=False,
             on_epoch=True,
             batch_size=len(y),
@@ -606,6 +620,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         # Metrics
         self.val_r2(out, y)
         self.val_pearson(out.to(self.device), y.to(self.device))
+        self.val_spearman(out.to(self.device), y.to(self.device))
         self.val_rmse(out, y)
         self.val_mae(out, y)
 
@@ -614,6 +629,13 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         self.log(
             "val/pearson",
             self.val_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "val/spearman",
+            self.val_spearman,
             on_step=False,
             on_epoch=True,
             batch_size=len(y),
@@ -644,6 +666,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         # Metrics
         self.test_r2(out, y)
         self.test_pearson(out.to(self.device), y.to(self.device))
+        self.test_spearman(out.to(self.device), y.to(self.device))
         self.test_rmse(out, y)
         self.test_mae(out, y)
 
@@ -654,6 +677,13 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         self.log(
             "test/pearson",
             self.test_pearson,
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
+        )
+        self.log(
+            "test/spearman",
+            self.test_spearman,
             on_step=False,
             on_epoch=True,
             batch_size=len(y),

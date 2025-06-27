@@ -234,7 +234,7 @@ class GraphEncoder:
             train_data_list,
             batch_size=batch_size,
             shuffle=shuffle,
-            drop_last=True,
+            drop_last=False,
             worker_init_fn=seed_worker if self.fix_seed else None,
             generator=g if self.fix_seed else None,
             num_workers=cpu_count() if cpu_count() < 8 else 8,

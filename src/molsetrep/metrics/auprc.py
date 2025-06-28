@@ -27,7 +27,7 @@ class AUPRC(Metric):
 
     def __init__(
         self,
-        num_classes: int,
+        num_classes: int = 2,
         thresholds: Optional[Union[int, List[float], Tensor]] = None,
         ignore_index: Optional[int] = None,
         validate_args: bool = True,

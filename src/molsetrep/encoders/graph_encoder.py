@@ -54,8 +54,12 @@ class GraphEncoder:
 
         return G
 
-    def smiles_to_nx(self, smiles: str) -> nx.Graph:
+    def smiles_to_nx(self, smiles: str) -> nx.Graph | None:
         mol = MolFromSmiles(smiles)
+
+        if mol is None:
+            return None
+
         return self.mol_to_nx(mol)
 
     def nx_to_pyg(
@@ -202,9 +206,12 @@ class GraphEncoder:
 
         train_data_list = []
 
-        for i, (G, s) in tqdm(
-            enumerate([(self.smiles_to_nx(s), s) for s in smiles]), total=len(smiles)
-        ):
+        for i, s in tqdm(enumerate(smiles), total=len(smiles)):
+            G = self.smiles_to_nx(s)
+
+            if G is None:
+                continue
+
             data = self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
             if data is None:
                 continue

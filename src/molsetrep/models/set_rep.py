@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Module, Parameter, Linear, BatchNorm1d, ReLU, Linear
+from torch.nn import Module, Parameter, Linear, BatchNorm1d, ReLU, Linear, LeakyReLU
 
 
 class SetRep(Module):
@@ -23,7 +23,7 @@ class SetRep(Module):
 
         self.bn = BatchNorm1d(self.n_hidden_sets)
         self.fc1 = Linear(self.n_hidden_sets, self.n_out_channels)
-        self.relu = ReLU()
+        self.relu = LeakyReLU()
 
         # Init weights
         self.Wc.data.normal_()

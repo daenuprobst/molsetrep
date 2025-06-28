@@ -3,13 +3,14 @@ from typing import List, Optional
 import lightning.pytorch as pl
 import torch
 import torch.nn.functional as F
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from torch_geometric.nn import (
     GAT,
     global_mean_pool,
 )
 from torch_geometric.utils import unbatch
-from torchmetrics.classification import AUROC, Accuracy, F1Score
+from torcheval.metrics import BinaryAUPRC, MulticlassAUPRC
+from torchmetrics.classification import AUROC, Accuracy, BinaryCalibrationError, F1Score
 from torchmetrics.regression import (
     MeanAbsoluteError,
     MeanSquaredError,
@@ -18,7 +19,6 @@ from torchmetrics.regression import (
     R2Score,
 )
 
-from molsetrep.metrics import AUPRC
 from molsetrep.models import MLP, DeepSet, SetRep, SetTransformer
 
 
@@ -60,8 +60,11 @@ class SRGNNClassifierV2(torch.nn.Module):
     ):
         super(SRGNNClassifierV2, self).__init__()
 
+        if n_classes == 2:
+            n_classes = 1
+
         if n_hidden_channels is None or len(n_hidden_channels) < 2:
-            n_hidden_channels = [32, 16]
+            n_hidden_channels = [64, 32]
 
         self.channels = in_channels if node_encoder_out == 0 else node_encoder_out
 
@@ -133,9 +136,7 @@ class SRGNNClassifierV2(torch.nn.Module):
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        out = self.mlp(torch.cat((t, p), -1))
-
-        return F.log_softmax(out, dim=1)
+        return self.mlp(torch.cat((t, p), -1)).squeeze(1)
 
     def forward_desc(self, batch):
         x = self.node_encoder(batch.x.float())
@@ -148,9 +149,7 @@ class SRGNNClassifierV2(torch.nn.Module):
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        out = self.mlp(torch.cat((t, p, d), -1))
-
-        return F.log_softmax(out, dim=1)
+        return self.mlp(torch.cat((t, p, d), -1)).squeeze(1)
 
     def forward(self, batch):
         if self.descriptors:
@@ -183,7 +182,7 @@ class SRGNNRegressorV2(torch.nn.Module):
         super(SRGNNRegressorV2, self).__init__()
 
         if n_hidden_channels is None or len(n_hidden_channels) < 2:
-            n_hidden_channels = [32, 16]
+            n_hidden_channels = [64, 32]
 
         self.channels = in_channels if node_encoder_out == 0 else node_encoder_out
 
@@ -214,6 +213,7 @@ class SRGNNRegressorV2(torch.nn.Module):
                 self.channels,
                 n_hidden_channels[0],
                 num_layers,
+                out_channels=n_hidden_channels[0],
                 edge_dim=self.edge_channels,
                 act="leakyrelu",
                 jk="cat",
@@ -248,7 +248,9 @@ class SRGNNRegressorV2(torch.nn.Module):
             descriptors_dim = n_descriptors
 
         self.mlp = MLP(
-            n_hidden_channels[0] * 2 + descriptors_dim, n_hidden_channels[1], 1
+            n_hidden_channels[0] * 2 + descriptors_dim,
+            n_hidden_channels[1],
+            1,
         )
 
     def forward_no_desc(self, batch):
@@ -314,6 +316,7 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         super(LightningSRGNNClassifierV2, self).__init__()
         self.save_hyperparameters()
 
+        self.n_classes = n_classes
         self.class_weights = class_weights
         self.learning_rate = learning_rate
 
@@ -339,30 +342,51 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         )
 
         # Criterions
-        self.criterion = CrossEntropyLoss()
+        args = {}
         if class_weights is not None:
-            self.criterion = CrossEntropyLoss(
-                weight=torch.FloatTensor(self.class_weights).to(self.device)
-            )
+            args = {"weight": torch.FloatTensor(self.class_weights).to(self.device)}
 
+            if n_classes == 2:
+                args = {
+                    "weight": torch.FloatTensor(
+                        [self.class_weights[1] / self.class_weights[0]]
+                    ).to(self.device)
+                }
+
+        self.criterion = CrossEntropyLoss(**args)
         self.criterion_eval = CrossEntropyLoss()
 
+        if n_classes == 2:
+            self.criterion = BCEWithLogitsLoss(**args)
+            self.criterion_eval = BCEWithLogitsLoss()
+
+        args = {"task": "multiclass", "num_classes": n_classes}
+        if n_classes == 2:
+            self.train_auprc = BinaryAUPRC()
+            self.val_auprc = BinaryAUPRC()
+            self.test_auprc = BinaryAUPRC()
+            args = {"task": "binary"}
+        else:
+            self.train_auprc = MulticlassAUPRC(num_classes=n_classes)
+            self.val_auprc = MulticlassAUPRC(num_classes=n_classes)
+            self.test_auprc = MulticlassAUPRC(num_classes=n_classes)
+
         # Metrics
-        self.train_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
-        self.train_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.train_auprc = AUPRC(task="multiclass", num_classes=n_classes)
-        self.train_f1 = F1Score(task="multiclass", num_classes=n_classes)
-        self.val_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
-        self.val_auroc = AUROC(task="multiclass", num_classes=n_classes)
-        self.val_auprc = AUPRC(task="multiclass", num_classes=n_classes)
-        self.val_f1 = F1Score(task="multiclass", num_classes=n_classes)
-        self.test_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
-        # TODO: Something isn't right here...
-        self.test_auroc = AUROC(
-            "binary"
-        )  # AUROC(task="multiclass", num_classes=n_classes)
-        self.test_auprc = AUPRC(task="multiclass", num_classes=n_classes)
-        self.test_f1 = F1Score(task="multiclass", num_classes=n_classes)
+        self.train_accuracy = Accuracy(**args)
+        self.train_auroc = AUROC(**args)
+        self.train_f1 = F1Score(**args)
+        self.val_accuracy = Accuracy(**args)
+        self.val_auroc = AUROC(**args)
+        self.val_f1 = F1Score(**args)
+        self.test_accuracy = Accuracy(**args)
+        self.test_auroc = AUROC(**args)
+        self.test_f1 = F1Score(**args)
+
+    def get_pred(self, logits):
+        if self.n_classes > 2:
+            return torch.argmax(logits, dim=1)
+        else:
+            return torch.sigmoid(logits).round().long()
 
     def forward(self, x):
         return self.gnn_classifier(x)
@@ -371,13 +395,14 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         y = batch.y
 
         out = self(batch)
-        loss = self.criterion(out, y)
+        loss = self.criterion(out, y.float())
 
+        pred = self.get_pred(out)
         # Metrics
-        self.train_accuracy(out, y)
-        self.train_auroc(out, y)
-        self.train_auprc(out, y)
-        self.train_f1(out, y)
+        self.train_accuracy(pred, y)
+        self.train_auroc(pred, y)
+        self.train_auprc.update(pred, y)
+        self.train_f1(pred, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log(
@@ -396,7 +421,7 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         )
         self.log(
             "train/auprc",
-            self.train_auprc,
+            self.train_auprc.compute(),
             on_step=False,
             on_epoch=True,
             batch_size=len(y),
@@ -411,13 +436,15 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         y = val_batch.y
 
         out = self(val_batch)
-        loss = self.criterion_eval(out, y)
+
+        loss = self.criterion_eval(out, y.float())
+        pred = self.get_pred(out)
 
         # Metrics
-        self.val_accuracy(out, y)
-        self.val_auroc(out, y)
-        self.val_auprc(out, y)
-        self.val_f1(out, y)
+        self.val_accuracy(pred, y)
+        self.val_auroc(pred, y)
+        self.val_auprc.update(pred, y)
+        self.val_f1(pred, y)
 
         self.log("val/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log(
@@ -431,7 +458,11 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
             "val/auroc", self.val_auroc, on_step=False, on_epoch=True, batch_size=len(y)
         )
         self.log(
-            "val/auprc", self.val_auprc, on_step=False, on_epoch=True, batch_size=len(y)
+            "val/auprc",
+            self.val_auprc.compute(),
+            on_step=False,
+            on_epoch=True,
+            batch_size=len(y),
         )
         self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, batch_size=len(y))
 
@@ -439,13 +470,14 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         y = test_batch.y
 
         out = self(test_batch)
-        loss = self.criterion_eval(out, y)
+        loss = self.criterion_eval(out, y.float())
+        pred = self.get_pred(out)
 
         # Metrics
-        self.test_accuracy(out, y)
-        self.test_auroc(out, y)
-        self.test_auprc(out, y)
-        self.test_f1(out, y)
+        self.test_accuracy(pred, y)
+        self.test_auroc(pred, y)
+        self.test_auprc.update(pred, y)
+        self.test_f1(pred, y)
 
         self.log("test/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
         self.log(
@@ -464,7 +496,7 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         )
         self.log(
             "test/auprc",
-            self.test_auprc,
+            self.test_auprc.compute(),
             on_step=False,
             on_epoch=True,
             batch_size=len(y),
@@ -472,6 +504,14 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         self.log(
             "test/f1", self.test_f1, on_step=False, on_epoch=True, batch_size=len(y)
         )
+
+    def predict_step(self, test_batch, batch_idx):
+        y = test_batch.y
+
+        out = self(test_batch)
+        loss = self.criterion_eval(out, y.float())
+        pred = self.get_pred(out)
+        return pred
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -696,4 +736,4 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

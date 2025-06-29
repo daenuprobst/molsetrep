@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from torch_geometric.nn import (
     GAT,
+    MLP,
     global_mean_pool,
 )
 from torch_geometric.utils import unbatch
@@ -19,7 +20,7 @@ from torchmetrics.regression import (
     R2Score,
 )
 
-from molsetrep.models import MLP, DeepSet, SetRep, SetTransformer
+from molsetrep.models import DeepSet, SetRep, SetTransformer
 
 
 def graph_batch_to_set(X, batch, dim):
@@ -86,8 +87,6 @@ class SRGNNClassifierV2(torch.nn.Module):
                 n_descriptors,
                 n_descriptors // 2,
                 descriptor_mlp_out,
-                dropout=descriptor_mlp_dropout,
-                bn=descriptor_mlp_bn,
             )
 
         if self.gnn is None:
@@ -201,11 +200,10 @@ class SRGNNRegressorV2(torch.nn.Module):
 
         if self.descriptors and self.descriptor_mlp:
             self.desc_mlp = MLP(
-                n_descriptors,
-                n_descriptors // 2,
-                descriptor_mlp_out,
-                dropout=descriptor_mlp_dropout,
-                bn=descriptor_mlp_bn,
+                in_channels=n_descriptors,
+                hidden_channels=n_descriptors // 2,
+                out_channels=descriptor_mlp_out,
+                num_layers=2,
             )
 
         if self.gnn is None:
@@ -232,7 +230,12 @@ class SRGNNRegressorV2(torch.nn.Module):
             )
         elif set_layer == "transformer":
             self.set_rep = SetTransformer(
-                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+                self.n_hidden_channels[0],
+                self.n_hidden_channels[0],
+                1,
+                num_heads=8,
+                num_inds=16,
+                dim_hidden=256,
             )
         elif set_layer == "deepset":
             self.set_rep = DeepSet(
@@ -248,9 +251,11 @@ class SRGNNRegressorV2(torch.nn.Module):
             descriptors_dim = n_descriptors
 
         self.mlp = MLP(
-            n_hidden_channels[0] * 2 + descriptors_dim,
-            n_hidden_channels[1],
-            1,
+            in_channels=n_hidden_channels[0] * 2 + descriptors_dim,
+            hidden_channels=n_hidden_channels[1],
+            out_channels=1,
+            num_layers=5,
+            dropout=0.15,
         )
 
     def forward_no_desc(self, batch):

@@ -229,11 +229,11 @@ def tdc_benchmark(
     group = admet_group(path="data/")
     predictions_list = []
 
-    for seed in [1, 2, 3]:
+    for seed in [1, 2, 3, 4, 5, 6]:
         predictions = {}
         for benchmark in group:
             name = benchmark["name"]
-            if name == "solubility_aqsoldb".lower():
+            if name != "caco2_wang".lower():
                 continue
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
@@ -354,15 +354,15 @@ def tdc_benchmark(
 @app.command()
 def main(
     use_class_weights: bool = True,
-    max_epochs: int = 250,
+    max_epochs: int = 150,
     batch_size: int = 64,
     n_hidden_sets: Optional[List[int]] = None,
     n_elements: Optional[List[int]] = None,
     n_hidden_channels: Optional[List[int]] = None,
-    n_layers: int = 8,
+    n_layers: int = 1,
     learning_rate: float = 0.001,
     set_layer: str = "setrep",
-    gnn_dropout: float = 0.0,
+    gnn_dropout: float = 0.1,
     node_encoder_out: int = 0,
     edge_encoder_out: int = 0,
     descriptors: bool = False,
@@ -375,13 +375,13 @@ def main(
     variant: Optional[str] = None,
     ckpt_path: str = "best",
 ):
-    # variant = "setrep_leakyrelu"
+    variant = "shorter"
     # TODO: Lower values for hidden sets and elements by a lot.
     if n_hidden_sets is None:
-        n_hidden_sets = [128]
+        n_hidden_sets = [8]
 
     if n_elements is None:
-        n_elements = [64]
+        n_elements = [8]
 
     if n_hidden_channels is None:
         n_hidden_channels = [64, 32]

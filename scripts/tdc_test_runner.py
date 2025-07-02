@@ -183,6 +183,7 @@ def get_datasets(
         train_y,
         label_dtype=label_dtype,
         batch_size=batch_size,
+        shuffle=True,
     )
 
     valid_dataset = encoder.encode(
@@ -233,14 +234,14 @@ def tdc_benchmark(
         predictions = {}
         for benchmark in group:
             name = benchmark["name"]
-            if name != "caco2_wang".lower():
+            if name != "Clearance_Microsome_AZ".lower():
                 continue
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
             task_type = task_type_map[admet_metric]
             mode = mode_map[admet_metric]
 
-            if metric != "mae":
+            if metric != "spearman":
                 continue
 
             train_val, test = benchmark["train_val"], benchmark["test"]
@@ -294,6 +295,7 @@ def tdc_benchmark(
                 descriptor_mlp_out=descriptor_mlp_out,
             )
 
+            print("-------->", metric, mode)
             checkpoint_callback = ModelCheckpoint(monitor=f"val/{metric}", mode=mode)
             learning_rate_callback = LearningRateMonitor(logging_interval="step")
 
@@ -362,7 +364,7 @@ def main(
     n_layers: int = 1,
     learning_rate: float = 0.001,
     set_layer: str = "setrep",
-    gnn_dropout: float = 0.1,
+    gnn_dropout: float = 0.0,
     node_encoder_out: int = 0,
     edge_encoder_out: int = 0,
     descriptors: bool = False,
@@ -375,7 +377,7 @@ def main(
     variant: Optional[str] = None,
     ckpt_path: str = "best",
 ):
-    variant = "shorter"
+    variant = "sets_elements_tests"
     # TODO: Lower values for hidden sets and elements by a lot.
     if n_hidden_sets is None:
         n_hidden_sets = [8]

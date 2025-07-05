@@ -178,6 +178,7 @@ class SRGNNRegressorV2(torch.nn.Module):
         descriptor_mlp_dropout: float = 0.25,
         descriptor_mlp_bn: bool = True,
         descriptor_mlp_out: int = 32,
+        pool: bool = True,
     ):
         super(SRGNNRegressorV2, self).__init__()
 
@@ -195,6 +196,7 @@ class SRGNNRegressorV2(torch.nn.Module):
         self.gnn_dropout = gnn_dropout
         self.descriptors = descriptors
         self.descriptor_mlp = descriptor_mlp
+        self.pool = pool
 
         self.node_encoder = torch.nn.Linear(in_channels, self.channels)
         self.edge_encoder = torch.nn.Linear(in_edge_channels, self.edge_channels)
@@ -251,8 +253,12 @@ class SRGNNRegressorV2(torch.nn.Module):
         elif descriptors:
             descriptors_dim = n_descriptors
 
+        pool_factor = 2
+        if not pool:
+            pool_factor = 1
+
         self.mlp = MLP(
-            in_channels=n_hidden_channels[0] * 2 + descriptors_dim,
+            in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
             hidden_channels=n_hidden_channels[1],
             out_channels=1,
             num_layers=5,
@@ -265,11 +271,14 @@ class SRGNNRegressorV2(torch.nn.Module):
 
         out = self.gnn(x, batch.edge_index, edge_attr=e)
 
-        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        out = self.mlp(torch.cat((t, p), -1))
+        if self.pool:
+            p = global_mean_pool(out, batch.batch)
+            out = self.mlp(torch.cat((t, p), -1))
+        else:
+            out = self.mlp(t)
 
         return out.squeeze(1)
 
@@ -280,11 +289,14 @@ class SRGNNRegressorV2(torch.nn.Module):
 
         out = self.gnn(x, batch.edge_index, edge_attr=e)
 
-        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        out = self.mlp(torch.cat((t, p, d), -1))
+        if self.pool:
+            p = global_mean_pool(out, batch.batch)
+            out = self.mlp(torch.cat((t, p, d), -1))
+        else:
+            out = self.mlp(torch.cat((t, d), -1))
 
         return out.squeeze(1)
 
@@ -561,7 +573,7 @@ def _rank_data(data):
     return rank
 
 
-def spearman_loss(pred, gt, regularization_strength=1.0, regularization="l2"):
+def spearman_loss(pred, gt, regularization_strength=0.5, regularization="l2"):
     pred = pred.unsqueeze(0)
     gt = gt.unsqueeze(0)
 
@@ -612,12 +624,15 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         descriptor_mlp_dropout: float = 0.25,
         descriptor_mlp_bn: bool = True,
         descriptor_mlp_out: int = 32,
+        pool: bool = True,
+        hybrid_loss: bool = False,
     ) -> None:
         super(LightningSRGNNRegressorV2, self).__init__()
         self.save_hyperparameters()
 
         self.learning_rate = learning_rate
         self.scaler = scaler
+        self.hybrid_loss = hybrid_loss
 
         self.gnn_regressor = SRGNNRegressorV2(
             n_hidden_sets[0],
@@ -637,6 +652,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
             descriptor_mlp_dropout=descriptor_mlp_dropout,
             descriptor_mlp_bn=descriptor_mlp_bn,
             descriptor_mlp_out=descriptor_mlp_out,
+            pool=pool,
         )
 
         # Metrics
@@ -663,7 +679,12 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         y = batch.y
 
         out = self(batch)
-        loss = spearman_loss(out, y)
+
+        if self.hybrid_loss:
+            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+        else:
+            loss = F.l1_loss(out, y)
+
         if self.scaler:
             out = torch.FloatTensor(
                 self.scaler.inverse_transform(
@@ -716,7 +737,11 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         y = val_batch.y
 
         out = self(val_batch)
-        loss = spearman_loss(out, y)
+
+        if self.hybrid_loss:
+            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+        else:
+            loss = F.l1_loss(out, y)
 
         if self.scaler:
             out = torch.FloatTensor(
@@ -762,7 +787,11 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         y = test_batch.y
 
         out = self(test_batch)
-        loss = spearman_loss(out, y)
+
+        if self.hybrid_loss:
+            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+        else:
+            loss = F.l1_loss(out, y)
 
         if self.scaler:
             out = torch.FloatTensor(

@@ -84,6 +84,8 @@ def get_model(
     descriptor_mlp_dropout: float = 0.25,
     descriptor_mlp_bn: bool = True,
     descriptor_mlp_out: int = 32,
+    pool: bool = True,
+    hybrid_loss: bool = True,
     **kwargs,
 ) -> torch.nn.Module:
     if task_type == "classification":
@@ -131,6 +133,8 @@ def get_model(
             descriptor_mlp_dropout=descriptor_mlp_dropout,
             descriptor_mlp_bn=descriptor_mlp_bn,
             descriptor_mlp_out=descriptor_mlp_out,
+            pool=pool,
+            hybrid_loss=hybrid_loss,
             **kwargs,
         )
 
@@ -223,6 +227,8 @@ def tdc_benchmark(
     descriptor_mlp_dropout: float = 0.25,
     descriptor_mlp_bn: bool = True,
     descriptor_mlp_out: int = 32,
+    pool: bool = True,
+    hybrid_loss: bool = False,
     charges: bool = False,
     variant: Optional[str] = None,
     ckpt_path: str = "best",
@@ -230,19 +236,24 @@ def tdc_benchmark(
     group = admet_group(path="data/")
     predictions_list = []
 
-    for seed in [1, 2, 3, 4, 5, 6]:
+    for seed in [1, 2, 3, 4, 5]:
         predictions = {}
         for benchmark in group:
             name = benchmark["name"]
-            if name != "Clearance_Microsome_AZ".lower():
-                continue
+            # if name != "caco2_wang".lower():
+            #     continue
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
             task_type = task_type_map[admet_metric]
             mode = mode_map[admet_metric]
 
-            if metric != "spearman":
+            if task_type == "classification":
                 continue
+
+            if metric == "spearman":
+                hybrid_loss = True
+            else:
+                hybrid_loss = False
 
             train_val, test = benchmark["train_val"], benchmark["test"]
 
@@ -293,6 +304,8 @@ def tdc_benchmark(
                 descriptor_mlp_dropout=descriptor_mlp_dropout,
                 descriptor_mlp_bn=descriptor_mlp_bn,
                 descriptor_mlp_out=descriptor_mlp_out,
+                hybrid_loss=hybrid_loss,
+                pool=pool,
             )
 
             print("-------->", metric, mode)
@@ -345,9 +358,12 @@ def tdc_benchmark(
             wandb_logger.finalize("success")
             wandb_finish()
 
-            predictions[name] = y_pred_test
-            print(group.evaluate(predictions))
-            predictions_list.append(predictions)
+            try:
+                predictions[name] = y_pred_test
+                print(group.evaluate(predictions))
+                predictions_list.append(predictions)
+            except:
+                print("Issue with evaluation")
 
     result = group.evaluate_many(predictions_list)
     print("--------->", result)
@@ -373,11 +389,12 @@ def main(
     descriptor_mlp_dropout: float = 0.25,
     descriptor_mlp_bn: bool = True,
     descriptor_mlp_out: int = 32,
+    pool: bool = True,
+    hybrid_loss: bool = False,
     charges: bool = False,
     variant: Optional[str] = None,
     ckpt_path: str = "best",
 ):
-    variant = "sets_elements_tests"
     # TODO: Lower values for hidden sets and elements by a lot.
     if n_hidden_sets is None:
         n_hidden_sets = [8]
@@ -407,6 +424,8 @@ def main(
         descriptor_mlp_dropout=descriptor_mlp_dropout,
         descriptor_mlp_bn=descriptor_mlp_bn,
         descriptor_mlp_out=descriptor_mlp_out,
+        pool=pool,
+        hybrid_loss=hybrid_loss,
         charges=charges,
         variant=variant,
         ckpt_path=ckpt_path,

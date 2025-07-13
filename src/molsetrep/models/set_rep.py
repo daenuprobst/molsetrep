@@ -1,5 +1,13 @@
 import torch
-from torch.nn import Module, Parameter, Linear, BatchNorm1d, ReLU, Linear, LeakyReLU
+from torch.nn import (
+    Module,
+    Parameter,
+    Linear,
+    BatchNorm1d,
+    ReLU,
+    LeakyReLU,
+    Dropout,
+)
 
 
 class SetRep(Module):
@@ -20,7 +28,6 @@ class SetRep(Module):
         self.Wc = Parameter(
             torch.FloatTensor(self.d, self.n_hidden_sets * self.n_elements)
         )
-
         self.bn = BatchNorm1d(self.n_hidden_sets)
         self.fc1 = Linear(self.n_hidden_sets, self.n_out_channels)
         self.relu = LeakyReLU()

@@ -13,7 +13,7 @@ from rdkit.Chem.AllChem import MolFromSmiles
 from rdkit.Chem.rdchem import Mol
 from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader, ImbalancedSampler
 from tqdm import tqdm
 
 from molsetrep.encoders.common import (
@@ -193,6 +193,7 @@ class GraphEncoder:
         suppress_rdkit_warnings: bool = True,
         label_dtype: Optional[torch.dtype] = None,
         shuffle: bool = False,
+        weighted_sampler: bool = False,
         **kwargs,
     ):
         if suppress_rdkit_warnings:
@@ -237,6 +238,12 @@ class GraphEncoder:
         g = torch.Generator()
         g.manual_seed(0)
 
+        sampler = None
+
+        if weighted_sampler:
+            sampler = ImbalancedSampler(train_data_list)
+            shuffle = False
+
         data_loader = DataLoader(
             train_data_list,
             batch_size=batch_size,
@@ -245,6 +252,7 @@ class GraphEncoder:
             worker_init_fn=seed_worker if self.fix_seed else None,
             generator=g if self.fix_seed else None,
             num_workers=cpu_count() if cpu_count() < 8 else 8,
+            sampler=sampler,
         )
 
         return data_loader

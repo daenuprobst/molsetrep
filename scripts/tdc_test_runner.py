@@ -1,23 +1,14 @@
 import os
-import random
-from multiprocessing import cpu_count
 from typing import List, Optional
-from torchmetrics.classification import AUROC
-from deepchem.feat.material_featurizers import element_property_fingerprint
-from deepchem.utils.differentiation_utils import setup_linear_problem
 import lightning.pytorch as pl
-from networkx import nx_latex
 import numpy as np
-from pandas.core.base import can_hold_element
 import torch
 import typer
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import wandb
 from rdkit import RDLogger
-from sklearn.preprocessing import StandardScaler
 from tdc.benchmark_group import admet_group
 from tdc.metadata import admet_metrics
-from torch.utils.data import DataLoader
 from wandb import finish as wandb_finish
 
 from molsetrep.encoders import (
@@ -31,10 +22,12 @@ from molsetrep.models import (
 )
 from molsetrep.utils.datasets import (
     CustomDataset,
-    get_class_weights,
 )
 
+from molsetrep.utils.log_standard_scaler import LogStandardScaler
+
 RDLogger.DisableLog("rdApp.*")
+
 
 app = typer.Typer(pretty_exceptions_enable=False)
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
@@ -61,6 +54,13 @@ mode_map = {
     "spearman": "max",
     "pr-auc": "max",
 }
+
+log_scale_sets = [
+    "vdss_lombardo",
+    "half_life_obach",
+    "clearance_hepatocyte_az",
+    "clearance_microsome_az",
+]
 
 
 def get_model(
@@ -145,6 +145,7 @@ def get_datasets(
     test,
     task_type,
     use_class_weights,
+    data_set_name,
     batch_size=64,
     charges=False,
     descriptors=False,
@@ -171,16 +172,13 @@ def get_datasets(
     test_y = np.array(test_y[:, 0])
 
     if task_type == "regression":
-        scaler = StandardScaler()
+        log_scale = data_set_name in log_scale_sets
+        scaler = LogStandardScaler(log=log_scale)
         scaler.fit(train_y.reshape(-1, 1))
 
         train_y = scaler.transform(train_y.reshape(-1, 1)).flatten()
         valid_y = scaler.transform(valid_y.reshape(-1, 1)).flatten()
         test_y = scaler.transform(test_y.reshape(-1, 1)).flatten()
-
-    class_weights = None
-    if task_type == "classification" and use_class_weights:
-        class_weights, _ = get_class_weights(train.y)
 
     train_dataset = encoder.encode(
         train.ids,
@@ -188,6 +186,7 @@ def get_datasets(
         label_dtype=label_dtype,
         batch_size=batch_size,
         shuffle=True,
+        weighted_sampler=use_class_weights and task_type == "classification",
     )
 
     valid_dataset = encoder.encode(
@@ -204,7 +203,7 @@ def get_datasets(
         batch_size=batch_size,
     )
 
-    return train_dataset, valid_dataset, test_dataset, scaler, class_weights
+    return train_dataset, valid_dataset, test_dataset, scaler
 
 
 def tdc_benchmark(
@@ -240,14 +239,16 @@ def tdc_benchmark(
         predictions = {}
         for benchmark in group:
             name = benchmark["name"]
+
             # if name != "caco2_wang".lower():
             #     continue
+
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
             task_type = task_type_map[admet_metric]
             mode = mode_map[admet_metric]
 
-            if task_type == "classification":
+            if metric != "spearman":
                 continue
 
             if metric == "spearman":
@@ -265,17 +266,16 @@ def tdc_benchmark(
             valid_split = CustomDataset.from_df(valid, "Drug", ["Y"])
             test_split = CustomDataset.from_df(test, "Drug", ["Y"])
 
-            train_loader, valid_loader, test_loader, scaler, class_weights = (
-                get_datasets(
-                    train_split,
-                    valid_split,
-                    test_split,
-                    task_type,
-                    use_class_weights,
-                    batch_size,
-                    charges,
-                    descriptors,
-                )
+            train_loader, valid_loader, test_loader, scaler = get_datasets(
+                train_split,
+                valid_split,
+                test_split,
+                task_type,
+                use_class_weights,
+                name,
+                batch_size,
+                charges,
+                descriptors,
             )
 
             d = [
@@ -289,7 +289,6 @@ def tdc_benchmark(
                 list(n_elements),
                 d,
                 2,
-                class_weights=class_weights,
                 learning_rate=learning_rate,
                 scaler=scaler,
                 n_hidden_channels=n_hidden_channels,
@@ -395,7 +394,6 @@ def main(
     variant: Optional[str] = None,
     ckpt_path: str = "best",
 ):
-    # TODO: Lower values for hidden sets and elements by a lot.
     if n_hidden_sets is None:
         n_hidden_sets = [8]
 

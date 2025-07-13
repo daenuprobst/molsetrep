@@ -19,9 +19,9 @@ from torchmetrics.regression import (
     SpearmanCorrCoef,
     R2Score,
 )
-from fast_soft_sort.pytorch_ops import soft_rank
 
 from molsetrep.models import DeepSet, SetRep, SetTransformer
+from molsetrep.utils.spearman_loss import spearman_loss
 
 
 def graph_batch_to_set(X, batch, dim):
@@ -42,8 +42,8 @@ class SRGNNClassifierV2(torch.nn.Module):
     def __init__(
         self,
         n_hidden_sets: int,
-        num_layers: int,
         n_elements: int,
+        num_layers: int,
         in_channels: int,
         in_edge_channels: int,
         n_hidden_channels: Optional[List] = None,
@@ -59,6 +59,7 @@ class SRGNNClassifierV2(torch.nn.Module):
         descriptor_mlp_dropout: float = 0.25,
         descriptor_mlp_bn: bool = True,
         descriptor_mlp_out: int = 32,
+        pool: bool = True,
     ):
         super(SRGNNClassifierV2, self).__init__()
 
@@ -79,23 +80,26 @@ class SRGNNClassifierV2(torch.nn.Module):
         self.gnn_dropout = gnn_dropout
         self.descriptors = descriptors
         self.descriptor_mlp = descriptor_mlp
+        self.pool = pool
 
         self.node_encoder = torch.nn.Linear(in_channels, self.channels)
         self.edge_encoder = torch.nn.Linear(in_edge_channels, self.edge_channels)
 
         if self.descriptors and self.descriptor_mlp:
             self.desc_mlp = MLP(
-                n_descriptors,
-                n_descriptors // 2,
-                descriptor_mlp_out,
+                in_channels=n_descriptors,
+                hidden_channels=n_descriptors // 2,
+                out_channels=descriptor_mlp_out,
+                num_layers=2,
             )
 
         if self.gnn is None:
             self.gnn = GAT(
-                in_channels,
+                self.channels,
                 n_hidden_channels[0],
                 num_layers,
-                edge_dim=in_edge_channels,
+                out_channels=n_hidden_channels[0],
+                edge_dim=self.edge_channels,
                 act="leakyrelu",
                 jk="cat",
                 dropout=self.gnn_dropout,
@@ -113,7 +117,12 @@ class SRGNNClassifierV2(torch.nn.Module):
             )
         elif set_layer == "transformer":
             self.set_rep = SetTransformer(
-                self.n_hidden_channels[0], self.n_hidden_channels[0], 1
+                self.n_hidden_channels[0],
+                self.n_hidden_channels[0],
+                1,
+                num_heads=8,
+                num_inds=16,
+                dim_hidden=256,
             )
         elif set_layer == "deepset":
             self.set_rep = DeepSet(
@@ -122,8 +131,26 @@ class SRGNNClassifierV2(torch.nn.Module):
         else:
             raise ValueError(f"Set layer '{set_layer}' not implemented.")
 
-        self.mlp = MLP(
-            self.n_hidden_channels[0] * 2, self.n_hidden_channels[1], n_classes
+        descriptors_dim = 0
+        if descriptors and descriptor_mlp:
+            descriptors_dim = descriptor_mlp_out
+        elif descriptors:
+            descriptors_dim = n_descriptors
+
+        pool_factor = 2
+        if not pool:
+            pool_factor = 1
+
+        # self.mlp = MLP(
+        #     in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
+        #     hidden_channels=n_hidden_channels[1],
+        #     out_channels=1,
+        #     num_layers=5,
+        #     dropout=0.15,
+        # )
+
+        self.mlp = torch.nn.Linear(
+            n_hidden_channels[0] * pool_factor + descriptors_dim, 1
         )
 
     def forward_no_desc(self, batch):
@@ -132,24 +159,36 @@ class SRGNNClassifierV2(torch.nn.Module):
 
         out = self.gnn(x, batch.edge_index, edge_attr=e)
 
-        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        return self.mlp(torch.cat((t, p), -1)).squeeze(1)
+        if self.pool:
+            p = global_mean_pool(out, batch.batch)
+            out = self.mlp(torch.cat((t, p), -1))
+        else:
+            out = self.mlp(t)
+
+        return out.squeeze(1)
 
     def forward_desc(self, batch):
-        x = self.node_encoder(batch.x.float())
-        e = self.edge_encoder(batch.edge_attr.float())
+        # x = self.node_encoder(batch.x.float())
+        # e = self.edge_encoder(batch.edge_attr.float())
+        x = batch.x.float()
+        e = batch.edge_attr.float()
         d = self.desc_mlp(batch.descriptors)
 
         out = self.gnn(x, batch.edge_index, edge_attr=e)
 
-        p = global_mean_pool(out, batch.batch)
         t = graph_batch_to_set(out, batch, self.n_hidden_channels[0])
         t = self.set_rep(t)
 
-        return self.mlp(torch.cat((t, p, d), -1)).squeeze(1)
+        if self.pool:
+            p = global_mean_pool(out, batch.batch)
+            out = self.mlp(torch.cat((t, p, d), -1))
+        else:
+            out = self.mlp(torch.cat((t, d), -1))
+
+        return torch.out.squeeze(1)
 
     def forward(self, batch):
         if self.descriptors:
@@ -257,12 +296,16 @@ class SRGNNRegressorV2(torch.nn.Module):
         if not pool:
             pool_factor = 1
 
-        self.mlp = MLP(
-            in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
-            hidden_channels=n_hidden_channels[1],
-            out_channels=1,
-            num_layers=5,
-            dropout=0.15,
+        # self.mlp = MLP(
+        #     in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
+        #     hidden_channels=n_hidden_channels[1],
+        #     out_channels=1,
+        #     num_layers=5,
+        #     dropout=0.15,
+        # )
+
+        self.mlp = torch.nn.Linear(
+            n_hidden_channels[0] * pool_factor + descriptors_dim, 1
         )
 
     def forward_no_desc(self, batch):
@@ -532,74 +575,14 @@ class LightningSRGNNClassifierV2(pl.LightningModule):
         return pred
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer
-
-
-def corrcoef(target, pred):
-    pred_n = pred - pred.mean()
-    target_n = target - target.mean()
-    pred_n = pred_n / pred_n.norm()
-    target_n = target_n / target_n.norm()
-    return (pred_n * target_n).sum()
-
-
-def _find_repeats(data):
-    temp = data.detach().clone()
-    temp = temp.sort()[0]
-
-    change = torch.cat(
-        [torch.tensor([True], device=temp.device), temp[1:] != temp[:-1]]
-    )
-    unique = temp[change]
-    change_idx = torch.cat(
-        [torch.nonzero(change), torch.tensor([[temp.numel()]], device=temp.device)]
-    ).flatten()
-    freq = change_idx[1:] - change_idx[:-1]
-    atleast2 = freq > 1
-    return unique[atleast2]
-
-
-def _rank_data(data):
-    n = data.numel()
-    rank = torch.empty_like(data)
-    idx = data.argsort()
-    rank[idx[:n]] = torch.arange(1, n + 1, dtype=data.dtype, device=data.device)
-
-    repeats = _find_repeats(data)
-    for r in repeats:
-        condition = data == r
-        rank[condition] = rank[condition].mean()
-    return rank
-
-
-def spearman_loss(pred, gt, regularization_strength=0.5, regularization="l2"):
-    pred = pred.unsqueeze(0)
-    gt = gt.unsqueeze(0)
-
-    assert pred.device == gt.device
-    assert pred.shape == gt.shape
-    assert pred.shape[0] == 1
-    assert pred.ndim == 2
-
-    device = pred.device
-
-    soft_pred = soft_rank(
-        pred.cpu(),
-        regularization_strength=regularization_strength,
-        regularization=regularization,
-    ).to(device)
-
-    soft_true = _rank_data(gt.squeeze(0)).to(device)
-    preds_diff = soft_pred - soft_pred.mean()
-    target_diff = soft_true - soft_true.mean()
-
-    cov = (preds_diff * target_diff).mean()
-    preds_std = torch.sqrt((preds_diff * preds_diff).mean())
-    target_std = torch.sqrt((target_diff * target_diff).mean())
-
-    spearman_corr = cov / (preds_std * target_std + 1e-6)
-    return -spearman_corr
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     optimizer, "min", patience=25, factor=0.75, min_lr=0.00001
+        # )
+        # return [optimizer], [
+        #     {"scheduler": scheduler, "interval": "epoch", "monitor": "val/loss"}
+        # ]
 
 
 class LightningSRGNNRegressorV2(pl.LightningModule):
@@ -681,7 +664,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+            loss = spearman_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -739,7 +722,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(val_batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+            loss = spearman_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -789,7 +772,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(test_batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y) + F.l1_loss(out, y)
+            loss = spearman_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 

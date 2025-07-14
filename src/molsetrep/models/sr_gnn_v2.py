@@ -664,7 +664,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y)
+            loss = 1.5 * spearman_loss(out, y) + F.l1_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -772,7 +772,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(test_batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y)
+            loss = 1.5 * spearman_loss(out, y) + F.l1_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -819,4 +819,11 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+        # return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, "min", patience=25, factor=0.75, min_lr=0.0001
+        )
+        return [optimizer], [
+            {"scheduler": scheduler, "interval": "epoch", "monitor": "val/loss"}
+        ]

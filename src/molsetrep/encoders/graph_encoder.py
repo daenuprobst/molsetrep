@@ -58,7 +58,13 @@ class GraphEncoder:
         mol = MolFromSmiles(smiles)
 
         if mol is None:
-            return None
+            # Sometimes, RDKit has issues with "[NH+2]" charges, remove 1 from that
+            # and try again
+            mol = MolFromSmiles(smiles.replace("[NH+2]", "[NH+1]"))
+
+            if mol is None:
+                print(smiles)
+                return None
 
         return self.mol_to_nx(mol)
 

@@ -1,4 +1,5 @@
 import os
+import pickle
 from typing import List, Optional
 import lightning.pytorch as pl
 import numpy as np
@@ -240,7 +241,7 @@ def tdc_benchmark(
         for benchmark in group:
             name = benchmark["name"]
 
-            # if name != "caco2_wang".lower():
+            # if name != "solubility_aqsoldb".lower():
             #     continue
 
             admet_metric = admet_metrics[name]
@@ -248,7 +249,7 @@ def tdc_benchmark(
             task_type = task_type_map[admet_metric]
             mode = mode_map[admet_metric]
 
-            if metric != "spearman":
+            if task_type != "regression":
                 continue
 
             if metric == "spearman":
@@ -307,11 +308,10 @@ def tdc_benchmark(
                 pool=pool,
             )
 
-            print("-------->", metric, mode)
             checkpoint_callback = ModelCheckpoint(monitor=f"val/{metric}", mode=mode)
             learning_rate_callback = LearningRateMonitor(logging_interval="step")
 
-            project_name = f"TDC_{name}_{task_type}"
+            project_name = f"TDC_Regression_Final"
             wandb_logger = wandb.WandbLogger(project=project_name)
             wandb_logger.experiment.config.update(
                 {
@@ -329,7 +329,8 @@ def tdc_benchmark(
                     "descriptor_mlp_dropout": descriptor_mlp_dropout,
                     "descriptor_mlp_bn": descriptor_mlp_bn,
                     "descriptor_mlp_out": descriptor_mlp_out,
-                }
+                },
+                allow_val_change=True,
             )
             wandb_logger.watch(model, log="all")
 
@@ -344,8 +345,6 @@ def tdc_benchmark(
                 model, train_dataloaders=train_loader, val_dataloaders=valid_loader
             )
             test_out = trainer.test(ckpt_path=ckpt_path, dataloaders=test_loader)
-            print("test_out")
-            print(test_out)
             y_pred_test = trainer.predict(ckpt_path=ckpt_path, dataloaders=test_loader)
             y_pred_test = torch.cat(y_pred_test)
 
@@ -354,18 +353,17 @@ def tdc_benchmark(
                     y_pred_test.detach().cpu().reshape(-1, 1)
                 ).flatten()
 
-            wandb_logger.finalize("success")
-            wandb_finish()
+            if wandb_logger:
+                wandb_logger.finalize("success")
+                wandb_finish()
 
-            try:
-                predictions[name] = y_pred_test
-                print(group.evaluate(predictions))
-                predictions_list.append(predictions)
-            except:
-                print("Issue with evaluation")
+            predictions[name] = y_pred_test
+            predictions_list.append(predictions)
 
     result = group.evaluate_many(predictions_list)
-    print("--------->", result)
+    print(result)
+    with open("result.pkl", "wb") as f:
+        pickle.dump(result, f)
 
 
 @app.command()

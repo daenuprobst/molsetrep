@@ -296,17 +296,17 @@ class SRGNNRegressorV2(torch.nn.Module):
         if not pool:
             pool_factor = 1
 
-        self.mlp = MLP(
-            in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
-            hidden_channels=n_hidden_channels[1],
-            out_channels=1,
-            num_layers=5,
-            dropout=0.15,
-        )
-
-        # self.mlp = torch.nn.Linear(
-        #     n_hidden_channels[0] * pool_factor + descriptors_dim, 1
+        # self.mlp = MLP(
+        #     in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
+        #     hidden_channels=n_hidden_channels[1],
+        #     out_channels=1,
+        #     num_layers=5,
+        #     dropout=0.15,
         # )
+
+        self.mlp = torch.nn.Linear(
+            n_hidden_channels[0] * pool_factor + descriptors_dim, 1
+        )
 
     def forward_no_desc(self, batch):
         x = self.node_encoder(batch.x.float())
@@ -820,10 +820,10 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
-        # return optimizer
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, "min", patience=25, factor=0.75, min_lr=0.0001
-        )
-        return [optimizer], [
-            {"scheduler": scheduler, "interval": "epoch", "monitor": "val/loss"}
-        ]
+        return optimizer
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     optimizer, "min", patience=25, factor=0.75, min_lr=0.0001
+        # )
+        # return [optimizer], [
+        #     {"scheduler": scheduler, "interval": "epoch", "monitor": "val/loss"}
+        # ]

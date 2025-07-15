@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import typer
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.loggers import wandb
 from rdkit import RDLogger
 from tdc.benchmark_group import admet_group
@@ -310,6 +311,9 @@ def tdc_benchmark(
 
             checkpoint_callback = ModelCheckpoint(monitor=f"val/{metric}", mode=mode)
             learning_rate_callback = LearningRateMonitor(logging_interval="step")
+            early_stopping_callback = EarlyStopping(
+                monitor=f"val/{metric}", patience=50, mode=mode
+            )
 
             project_name = f"TDC_Regression_Final"
             wandb_logger = wandb.WandbLogger(project=project_name)
@@ -335,7 +339,11 @@ def tdc_benchmark(
             wandb_logger.watch(model, log="all")
 
             trainer = pl.Trainer(
-                callbacks=[checkpoint_callback],
+                callbacks=[
+                    checkpoint_callback,
+                    learning_rate_callback,
+                    # early_stopping_callback,
+                ],
                 max_epochs=max_epochs,
                 log_every_n_steps=1,
                 logger=wandb_logger,

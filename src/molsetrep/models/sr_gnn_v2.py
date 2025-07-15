@@ -609,6 +609,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         descriptor_mlp_out: int = 32,
         pool: bool = True,
         hybrid_loss: bool = False,
+        ranking_loss_weight: float = 1.5,
     ) -> None:
         super(LightningSRGNNRegressorV2, self).__init__()
         self.save_hyperparameters()
@@ -616,6 +617,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         self.learning_rate = learning_rate
         self.scaler = scaler
         self.hybrid_loss = hybrid_loss
+        self.ranking_loss_weight = ranking_loss_weight
 
         self.gnn_regressor = SRGNNRegressorV2(
             n_hidden_sets[0],
@@ -664,7 +666,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(batch)
 
         if self.hybrid_loss:
-            loss = 1.5 * spearman_loss(out, y) + F.l1_loss(out, y)
+            loss = self.ranking_loss_weight * spearman_loss(out, y) + F.l1_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -722,7 +724,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(val_batch)
 
         if self.hybrid_loss:
-            loss = spearman_loss(out, y)
+            loss = self.ranking_loss_weight * spearman_loss(out, y) + F.l1_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 
@@ -772,7 +774,7 @@ class LightningSRGNNRegressorV2(pl.LightningModule):
         out = self(test_batch)
 
         if self.hybrid_loss:
-            loss = 1.5 * spearman_loss(out, y) + F.l1_loss(out, y)
+            loss = self.ranking_loss_weight * spearman_loss(out, y) + F.l1_loss(out, y)
         else:
             loss = F.l1_loss(out, y)
 

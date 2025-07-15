@@ -88,6 +88,7 @@ def get_model(
     descriptor_mlp_out: int = 32,
     pool: bool = True,
     hybrid_loss: bool = True,
+    ranking_loss_weight: float = 1.5,
     **kwargs,
 ) -> torch.nn.Module:
     if task_type == "classification":
@@ -137,6 +138,7 @@ def get_model(
             descriptor_mlp_out=descriptor_mlp_out,
             pool=pool,
             hybrid_loss=hybrid_loss,
+            ranking_loss_weight=ranking_loss_weight,
             **kwargs,
         )
 
@@ -230,6 +232,7 @@ def tdc_benchmark(
     descriptor_mlp_out: int = 32,
     pool: bool = True,
     hybrid_loss: bool = False,
+    ranking_loss_weight: float = 1.5,
     charges: bool = False,
     variant: Optional[str] = None,
     ckpt_path: str = "best",
@@ -242,8 +245,8 @@ def tdc_benchmark(
         for benchmark in group:
             name = benchmark["name"]
 
-            # if name != "solubility_aqsoldb".lower():
-            #     continue
+            if name != "clearance_microsome_az".lower():
+                continue
 
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
@@ -306,6 +309,7 @@ def tdc_benchmark(
                 descriptor_mlp_bn=descriptor_mlp_bn,
                 descriptor_mlp_out=descriptor_mlp_out,
                 hybrid_loss=hybrid_loss,
+                ranking_loss_weight=ranking_loss_weight,
                 pool=pool,
             )
 
@@ -396,6 +400,7 @@ def main(
     descriptor_mlp_out: int = 32,
     pool: bool = True,
     hybrid_loss: bool = False,
+    ranking_loss_weight: float = 1.5,
     charges: bool = False,
     variant: Optional[str] = None,
     ckpt_path: str = "best",
@@ -430,6 +435,7 @@ def main(
         descriptor_mlp_out=descriptor_mlp_out,
         pool=pool,
         hybrid_loss=hybrid_loss,
+        ranking_loss_weight=ranking_loss_weight,
         charges=charges,
         variant=variant,
         ckpt_path=ckpt_path,

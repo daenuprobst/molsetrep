@@ -296,17 +296,17 @@ class SRGNNRegressorV2(torch.nn.Module):
         if not pool:
             pool_factor = 1
 
-        # self.mlp = MLP(
-        #     in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
-        #     hidden_channels=n_hidden_channels[1],
-        #     out_channels=1,
-        #     num_layers=5,
-        #     dropout=0.15,
-        # )
-
-        self.mlp = torch.nn.Linear(
-            n_hidden_channels[0] * pool_factor + descriptors_dim, 1
+        self.mlp = MLP(
+            in_channels=n_hidden_channels[0] * pool_factor + descriptors_dim,
+            hidden_channels=n_hidden_channels[1],
+            out_channels=1,
+            num_layers=5,
+            dropout=0.15,
         )
+
+        # self.mlp = torch.nn.Linear(
+        #     n_hidden_channels[0] * pool_factor + descriptors_dim, 1
+        # )
 
     def forward_no_desc(self, batch):
         x = self.node_encoder(batch.x.float())

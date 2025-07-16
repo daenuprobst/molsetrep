@@ -3,11 +3,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-import deepchem.molnet as mn
+try:
+    import deepchem.molnet as mn
+    from deepchem.utils.rdkit_utils import load_molecule
+except:
+    ...
+
 import numpy as np
 import pandas as pd
-from deepchem.splits import RandomSplitter
-from deepchem.utils.rdkit_utils import load_molecule
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
 from sklearn.model_selection import KFold

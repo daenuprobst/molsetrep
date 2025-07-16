@@ -56,6 +56,10 @@ The following models / architectures and associated encoders are available. If y
 - `LightningSRGNNRegressor`
   - Wraps `SRGNNRegressor`
   - Takes molecules encoded by `GraphEncoder` as input
+- `LightningSRGNNRegressorV2`
+  - Wraps `SRGNNRegressorV2`
+  - Takes molecules encoded by `GraphEncoder` as input
+  - Improved architecture mixing set representation with global pooled representation
 
 ### Protein-ligand binding affinity (or other property) prediction
 

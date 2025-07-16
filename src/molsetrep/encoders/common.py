@@ -49,45 +49,40 @@ def one_hot_encode(prop: Any, vals: Union[int, Iterable[int]]):
 
 def get_atomic_invariants_as_dict(atom, charges: bool = True):
     invariants = get_atomic_invariants(atom, charges)
-    return {f"node_{i}": v for i, v, in enumerate(invariants)}
+    return {f"node_{i}": v for i, v in enumerate(invariants)}
 
 
 def get_bond_invariants_as_dict(bond):
     invariants = get_bond_invariants(bond)
-    return {f"edge_{i}": v for i, v, in enumerate(invariants)}
+    return {f"edge_{i}": v for i, v in enumerate(invariants)}
 
 
 def get_atomic_invariants(atom, charges: bool = True, max_atomic_num: int = 100):
     atomic_invariants = []
     atomic_invariants += one_hot_encode(atom.GetTotalDegree(), 6)
-    # atomic_invariants += one_hot_encode(
-    #     atom.GetExplicitValence()
-    #     + atom.GetImplicitValence()
-    #     - atom.GetNumExplicitHs()
-    #     - atom.GetNumImplicitHs(),
-    #     6,
-    # )
     atomic_invariants += one_hot_encode(atom.GetAtomicNum(), max_atomic_num)
     atomic_invariants += one_hot_encode(atom.GetFormalCharge(), [-2, -1, 0, 1, 2])
     atomic_invariants += one_hot_encode(
         atom.GetHybridization(),
         [
+            HybridizationType.S,
             HybridizationType.SP,
             HybridizationType.SP2,
+            HybridizationType.SP2D,
             HybridizationType.SP3,
             HybridizationType.SP3D,
             HybridizationType.SP3D2,
         ],
     )
+
     atomic_invariants += one_hot_encode(atom.GetChiralTag(), 4)
-    # atomic_invariants.append(atom.GetMass())
     atomic_invariants.append(int(atom.IsInRing() == True))
 
     if charges:
         atomic_invariants.append(float(atom.GetProp("_GasteigerCharge")))
-    # atomic_invariants.append(PT.GetRvdw(atom.GetAtomicNum()))
 
     atomic_invariants += one_hot_encode(atom.GetTotalNumHs(), 6)
+    atomic_invariants.append(0.01 * atom.GetMass())
 
     return atomic_invariants
 

@@ -37,3 +37,10 @@ from molsetrep.models.sr_gnn import (
     LightningSRGNNClassifier,
     LightningSRGNNRegressor,
 )
+
+from molsetrep.models.sr_gnn_v2 import (
+    SRGNNClassifierV2,
+    SRGNNRegressorV2,
+    LightningSRGNNClassifierV2,
+    LightningSRGNNRegressorV2,
+)

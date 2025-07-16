@@ -1,17 +1,20 @@
 import pickle
-from typing import List
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List
+
+try:
+    import deepchem.molnet as mn
+    from deepchem.utils.rdkit_utils import load_molecule
+except:
+    ...
+
 import numpy as np
-import deepchem.molnet as mn
 import pandas as pd
-
-from deepchem.splits import RandomSplitter
-from deepchem.utils.rdkit_utils import load_molecule
-from sklearn.model_selection import KFold
-
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
+from sklearn.model_selection import KFold
+from tdc.single_pred import ADME
 
 
 @dataclass
@@ -190,6 +193,35 @@ molnet_tasks = {
         "SR-p53",
     ],
 }
+
+
+def tdc_adme_task_loader(name: str, featurizer=None, **kwargs):
+    # return ["Solubility_AqSolDB"]
+    # return ["Lipophilicity_AstraZeneca"]
+    # return ["PPBR_AZ"]
+    # return ["Bioavailability_Ma"]
+    # return ["CYP2C9_Veith"]
+    return ["CYP3A4_Substrate_CarbonMangels"]
+
+
+def tdc_adme_loader(
+    name: str, featurizer=None, split_ratio=0.7, seed=42, descriptors=False, **kwargs
+):
+    task_name = kwargs.get("task_name", None)
+    print(task_name)
+
+    data = ADME(name=task_name)
+    split = data.get_split(method="scaffold")
+
+    tasks = ["Y"]
+
+    return (
+        CustomDataset.from_df(split["train"], "Drug", tasks),
+        CustomDataset.from_df(split["valid"], "Drug", tasks),
+        CustomDataset.from_df(split["test"], "Drug", tasks),
+        tasks,
+        [],
+    )
 
 
 def pdbbind_custom_task_loader(name: str, featurizer=None, **kwargs):

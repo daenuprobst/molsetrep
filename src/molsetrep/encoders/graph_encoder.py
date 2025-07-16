@@ -1,33 +1,38 @@
 import random
-from typing import Optional, Any, Iterable
 from collections import defaultdict
 from multiprocessing import cpu_count
+from typing import Any, Iterable, Optional
 
+import networkx as nx
+import numpy as np
 import torch
 import torch_geometric
-import numpy as np
-import networkx as nx
-
+from descriptastorus.descriptors.rdNormalizedDescriptors import RDKit2DNormalized
+from rdkit import RDLogger
+from rdkit.Chem.AllChem import MolFromSmiles
+from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader, ImbalancedSampler
 from tqdm import tqdm
 
-from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
-from rdkit.Chem.rdchem import Mol
-from rdkit.Chem.AllChem import MolFromSmiles
-from rdkit import RDLogger
-from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
-
 from molsetrep.encoders.common import (
+    N_BOND_INVARIANTS,
     get_atomic_invariants_as_dict,
     get_bond_invariants_as_dict,
-    N_BOND_INVARIANTS,
 )
 
 
 class GraphEncoder:
-    def __init__(self, charges: bool = False, fix_seed: bool = True) -> "GraphEncoder":
+    def __init__(
+        self, charges: bool = False, fix_seed: bool = True, descriptors: bool = False
+    ) -> "GraphEncoder":
         self.charges = charges
         self.fix_seed = fix_seed
+        self.descriptors = descriptors
+
+        if self.descriptors:
+            self.descriptor_generator = RDKit2DNormalized()
 
     def mol_to_nx(self, mol: Mol) -> nx.Graph:
         G = nx.Graph()
@@ -49,8 +54,18 @@ class GraphEncoder:
 
         return G
 
-    def smiles_to_nx(self, smiles: str) -> nx.Graph:
+    def smiles_to_nx(self, smiles: str) -> nx.Graph | None:
         mol = MolFromSmiles(smiles)
+
+        if mol is None:
+            # Sometimes, RDKit has issues with "[NH+2]" charges, remove 1 from that
+            # and try again
+            mol = MolFromSmiles(smiles.replace("[NH+2]", "[NH+1]"))
+
+            if mol is None:
+                print(smiles)
+                return None
+
         return self.mol_to_nx(mol)
 
     def nx_to_pyg(
@@ -182,8 +197,9 @@ class GraphEncoder:
         atom_attrs: Optional[Iterable[str]] = None,
         bond_attrs: Optional[Iterable[str]] = None,
         suppress_rdkit_warnings: bool = True,
-        label_dtype: torch.dtype = None,
+        label_dtype: Optional[torch.dtype] = None,
         shuffle: bool = False,
+        weighted_sampler: bool = False,
         **kwargs,
     ):
         if suppress_rdkit_warnings:
@@ -196,12 +212,29 @@ class GraphEncoder:
             bond_attrs = []
 
         train_data_list = []
-        for i, G in tqdm(
-            enumerate([self.smiles_to_nx(s) for s in smiles]), total=len(smiles)
-        ):
+
+        for i, s in tqdm(enumerate(smiles), total=len(smiles)):
+            G = self.smiles_to_nx(s)
+
+            if G is None:
+                continue
+
             data = self.nx_to_pyg(G, y=torch.tensor([labels[i]], dtype=label_dtype))
-            if data is not None:
-                train_data_list.append(data)
+            if data is None:
+                continue
+
+            if self.descriptors:
+                descriptors = self.descriptor_generator.process(s)
+                descriptors = np.nan_to_num(descriptors)
+
+                if descriptors[0]:
+                    descriptors = descriptors[1:]
+                else:
+                    descriptors = [0.0] * 200
+
+                data.descriptors = torch.tensor([descriptors], dtype=torch.float)
+
+            train_data_list.append(data)
 
         def seed_worker(worker_id):
             worker_seed = torch.initial_seed() % 2**32
@@ -211,14 +244,21 @@ class GraphEncoder:
         g = torch.Generator()
         g.manual_seed(0)
 
+        sampler = None
+
+        if weighted_sampler:
+            sampler = ImbalancedSampler(train_data_list)
+            shuffle = False
+
         data_loader = DataLoader(
             train_data_list,
             batch_size=batch_size,
             shuffle=shuffle,
-            drop_last=True,
+            drop_last=False,
             worker_init_fn=seed_worker if self.fix_seed else None,
             generator=g if self.fix_seed else None,
             num_workers=cpu_count() if cpu_count() < 8 else 8,
+            sampler=sampler,
         )
 
         return data_loader

@@ -245,8 +245,8 @@ def tdc_benchmark(
         for benchmark in group:
             name = benchmark["name"]
 
-            if name != "clearance_microsome_az".lower():
-                continue
+            # if name != "clearance_microsome_az".lower():
+            #     continue
 
             admet_metric = admet_metrics[name]
             metric = metric_map[admet_metric]
